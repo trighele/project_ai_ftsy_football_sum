@@ -22,4 +22,4 @@ spec:
         - configMapRef:
             name: project-ai-ftsy-football-sum-config        
         ports:
-        - containerPort: 7068
+        - containerPort: 7860

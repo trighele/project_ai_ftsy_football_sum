@@ -10,8 +10,8 @@ env:
   SERVICE_NAME: project-ai-ftsy-football-sum
   DEPLOYMENT_NAME: project-ai-ftsy-football-sum-deployment
   CONTAINER_NAME: project-ai-ftsy-football-sum-container
-  KUBE_PORT: 3068
-  APP_PORT: 4068
+  KUBE_PORT: 3012
+  APP_PORT: 4012
   NAMESPACE: project-ai-ftsy-football-sum
 
 jobs:

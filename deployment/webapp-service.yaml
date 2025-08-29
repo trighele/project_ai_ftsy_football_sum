@@ -8,6 +8,6 @@ spec:
     app: project-ai-ftsy-football-sum
   ports:
     - protocol: TCP
-      port: 3068
-      targetPort: 7068
+      port: 3012
+      targetPort: 7860
   type: NodePort
