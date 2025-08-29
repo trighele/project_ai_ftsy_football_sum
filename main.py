@@ -5,7 +5,6 @@ import math
 import datetime
 import yt_dlp
 from pydub import AudioSegment
-from huggingface_hub import login
 import anthropic
 import gradio as gr
 
@@ -216,4 +215,4 @@ if __name__ == "__main__":
         transcribe_button.click(fn=fn_transcribe, inputs=[youtube_url_input], outputs=[transcribe_output, youtube_url_date_output, youtube_url_title_output])
         summarize_button.click(fn=fn_summarize, inputs=[transcribe_output, youtube_url_date_output, youtube_url_title_output], outputs=[summarize_output])
 
-    ui.launch(inbrowser=True)
+    ui.launch(server_name="0.0.0.0", server_port=7860, inbrowser=True)

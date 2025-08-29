@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-ai-ftsy-football-sum-deployment
+  namespace: project-ai-ftsy-football-sum 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: project-ai-ftsy-football-sum
+  template:
+    metadata:
+      labels:
+        app: project-ai-ftsy-football-sum
+    spec:
+      containers:
+      - name: project-ai-ftsy-football-sum-container
+        image: project-ai-ftsy-football-sum:v1
+        envFrom:
+        - secretRef:
+            name: project-ai-ftsy-football-sum-secrets
+        - configMapRef:
+            name: project-ai-ftsy-football-sum-config        
+        ports:
+        - containerPort: 7068
