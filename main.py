@@ -1,4 +1,6 @@
 import os
+import sys
+import time
 import requests
 import base64
 import math
@@ -61,6 +63,8 @@ def chunk_audio():
 
     except Exception as e:
         print(f"Exception occurred while chunking audio: {e}")
+        time.sleep(10)
+        sys.exit()   # Exits the program
 
 def transcribe_audio():
     # Load environment variables
