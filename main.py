@@ -65,6 +65,11 @@ def chunk_audio():
         print("Chunking audio into 4 parts...")
         input_file = "./staging/audio.mp3"
 
+        if not input_file.exists():
+            raise FileNotFoundError(f"{input_file} does not exist")
+        if input_file.stat().st_size == 0:
+            raise ValueError(f"{input_file} is empty (download may have failed)")
+
         audio = AudioSegment.from_mp3(input_file)
         duration_ms = len(audio)
         part_length = math.ceil(duration_ms / 4)
