@@ -62,6 +62,7 @@ def chunk_audio():
     # Replace with your downloaded file name
     try:
     
+        print("Chunking audio into 4 parts...")
         input_file = "./staging/audio.mp3"
 
         audio = AudioSegment.from_mp3(input_file)
