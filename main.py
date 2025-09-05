@@ -14,32 +14,37 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 def download_audio(youtube_url):
-    output_path = "./staging/audio.%(ext)s"
+    try:
+        output_path = "./staging/audio.%(ext)s"
 
-    ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': output_path,
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    }
+        ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': output_path,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(youtube_url, download=False)
-        upload_date = info.get("upload_date")  # Format: YYYYMMDD
-        title = info.get("title", "")
-        ydl.download([youtube_url])
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(youtube_url, download=False)
+            upload_date = info.get("upload_date")  # Format: YYYYMMDD
+            title = info.get("title", "")
+            ydl.download([youtube_url])
 
-    # Convert to desired format: %Y-%m-%d %H:%M:%S
-    if upload_date:
-        dt = datetime.datetime.strptime(upload_date, "%Y%m%d")
-        upload_date_formatted = dt.strftime("%Y-%m-%d 00:00:00")
-    else:
-        upload_date_formatted = ""
+        # Convert to desired format: %Y-%m-%d %H:%M:%S
+        if upload_date:
+            dt = datetime.datetime.strptime(upload_date, "%Y%m%d")
+            upload_date_formatted = dt.strftime("%Y-%m-%d 00:00:00")
+        else:
+            upload_date_formatted = ""
 
-    return upload_date_formatted, title
+        return upload_date_formatted, title
+    except Exception as e:
+        print(f"Exception occurred while downloading audio: {e}")
+        time.sleep(10)
+        sys.exit()
 
 def chunk_audio():
     # Replace with your downloaded file name
