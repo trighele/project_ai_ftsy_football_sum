@@ -1,6 +1,7 @@
 name: Local CI/CD for Kubernetes (Self-Hosted)
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
