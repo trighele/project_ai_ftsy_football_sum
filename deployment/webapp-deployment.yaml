@@ -20,6 +20,10 @@ spec:
         - secretRef:
             name: project-ai-ftsy-football-sum-secrets
         - configMapRef:
-            name: project-ai-ftsy-football-sum-config        
+            name: project-ai-ftsy-football-sum-config   
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sleep", "5"]
         ports:
         - containerPort: 7860
