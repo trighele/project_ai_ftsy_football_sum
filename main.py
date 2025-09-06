@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import logging
 import requests
 import base64
 import math
@@ -13,17 +12,6 @@ import gradio as gr
 
 from dotenv import load_dotenv
 load_dotenv(override=True)
-
-logging.basicConfig(
-    level=logging.DEBUG,  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("app.log"),   # Log to file
-        logging.StreamHandler()           # Also log to console
-    ]
-)
-
-logger = logging.getLogger(__name__)
 
 def download_audio(youtube_url):
     try:
