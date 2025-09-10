@@ -18,10 +18,10 @@ spec:
         image: project-ai-ftsy-football-sum:v1
         resources:
           requests:
-            memory: "1024Mi"
+            memory: "256Mi"
             cpu: "250m"
           limits:
-            memory: "2Gi"
+            memory: "512Mi"
             cpu: "1000m"
         envFrom:
         - secretRef:

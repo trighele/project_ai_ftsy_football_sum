@@ -6,7 +6,7 @@ import base64
 import math
 import datetime
 import yt_dlp
-from pydub import AudioSegment
+import subprocess
 import anthropic
 import gradio as gr
 
@@ -53,17 +53,25 @@ def chunk_audio():
         print("Chunking audio into 4 parts...")
         input_file = "./staging/audio.mp3"
 
-        audio = AudioSegment.from_mp3(input_file)
-        duration_ms = len(audio)
-        part_length = math.ceil(duration_ms / 4)
-
         base_name = os.path.splitext(input_file)[0]
 
+        # First, get total duration (in seconds)
+        cmd = ["ffprobe", "-i", input_file, "-show_entries", "format=duration", "-v", "quiet", "-of", "csv=p=0"]
+        duration = float(subprocess.check_output(cmd).decode().strip())
+        part_length = math.ceil(duration / 4)
+
+        # Split into 4 parts
         for i in range(4):
             start = i * part_length
-            end = min((i + 1) * part_length, duration_ms)
-            part = audio[start:end]
-            part.export(f"{base_name}_part{i+1}.mp3", format="mp3")
+            output = f"{base_name}_part{i+1}.mp3"
+            subprocess.run([
+                "ffmpeg", "-y",
+                "-i", input_file,
+                "-ss", str(start),
+                "-t", str(part_length),
+                "-c", "copy",  # copy codec → no re-encoding
+                output
+            ]) 
 
         print("Audio split into 4 parts.")
 
