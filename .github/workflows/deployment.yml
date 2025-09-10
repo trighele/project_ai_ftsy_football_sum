@@ -45,24 +45,13 @@ jobs:
           HF_INFERENCE_ENDPOINT_URL: ${{ secrets.HF_INFERENCE_ENDPOINT_URL }}
         run: |
           kubectl create secret generic project-ai-ftsy-football-sum-secrets \
-            --from-literal=HF_TOKEN=${{ env.HF_TOKEN }} \
-            --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
-
-          kubectl create secret generic project-ai-ftsy-football-sum-secrets \
-            --from-literal=HF_NAMESPACE=${{ env.HF_NAMESPACE }} \
-            --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
-
-          kubectl create secret generic project-ai-ftsy-football-sum-secrets \
-            --from-literal=HF_INFERENCE_ENDPOINT_NAME=${{ env.HF_INFERENCE_ENDPOINT_NAME }} \
-            --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
-
-          kubectl create secret generic project-ai-ftsy-football-sum-secrets \
-            --from-literal=ANTHROPIC_API_KEY=${{ env.ANTHROPIC_API_KEY }} \
-            --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
-
-          kubectl create secret generic project-ai-ftsy-football-sum-secrets \
-            --from-literal=HF_INFERENCE_ENDPOINT_URL=${{ env.HF_INFERENCE_ENDPOINT_URL }} \
-            --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
+            --from-literal=HF_TOKEN="${{ env.HF_TOKEN }}" \
+            --from-literal=HF_NAMESPACE="${{ env.HF_NAMESPACE }}" \
+            --from-literal=HF_INFERENCE_ENDPOINT_NAME="${{ env.HF_INFERENCE_ENDPOINT_NAME }}" \
+            --from-literal=ANTHROPIC_API_KEY="${{ env.ANTHROPIC_API_KEY }}" \
+            --from-literal=HF_INFERENCE_ENDPOINT_URL="${{ env.HF_INFERENCE_ENDPOINT_URL }}" \
+            --dry-run=client -o yaml \
+          | kubectl apply -n "${{ env.NAMESPACE }}" -f -
 
           kubectl create configmap project-ai-ftsy-football-sum-config \
             --from-literal=CLAUDE_MODEL=${{ env.CLAUDE_MODEL }} \

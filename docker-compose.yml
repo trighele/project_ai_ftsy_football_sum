@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "7860:7860"
+      - "9193:7860"  # host:container
     environment:
       - HF_TOKEN=${HF_TOKEN}
       - HF_NAMESPACE=${HF_NAMESPACE}

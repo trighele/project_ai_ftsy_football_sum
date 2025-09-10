@@ -1,10 +1,12 @@
 import os
+import sys
+import time
 import requests
 import base64
 import math
 import datetime
 import yt_dlp
-from pydub import AudioSegment
+import subprocess
 import anthropic
 import gradio as gr
 
@@ -12,50 +14,71 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 def download_audio(youtube_url):
-    output_path = "./staging/audio.%(ext)s"
+    try:
+        output_path = "./staging/audio.%(ext)s"
 
-    ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': output_path,
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    }
+        ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': output_path,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(youtube_url, download=False)
-        upload_date = info.get("upload_date")  # Format: YYYYMMDD
-        title = info.get("title", "")
-        ydl.download([youtube_url])
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(youtube_url, download=False)
+            upload_date = info.get("upload_date")  # Format: YYYYMMDD
+            title = info.get("title", "")
+            ydl.download([youtube_url])
 
-    # Convert to desired format: %Y-%m-%d %H:%M:%S
-    if upload_date:
-        dt = datetime.datetime.strptime(upload_date, "%Y%m%d")
-        upload_date_formatted = dt.strftime("%Y-%m-%d 00:00:00")
-    else:
-        upload_date_formatted = ""
+        # Convert to desired format: %Y-%m-%d %H:%M:%S
+        if upload_date:
+            dt = datetime.datetime.strptime(upload_date, "%Y%m%d")
+            upload_date_formatted = dt.strftime("%Y-%m-%d 00:00:00")
+        else:
+            upload_date_formatted = ""
 
-    return upload_date_formatted, title
+        return upload_date_formatted, title
+    except Exception as e:
+        print(f"Exception occurred while downloading audio: {e}")
+        time.sleep(10)
+        sys.exit()
 
 def chunk_audio():
     # Replace with your downloaded file name
-    input_file = "./staging/audio.mp3"
+    try:
+    
+        print("Chunking audio into 4 parts...")
+        input_file = "./staging/audio.mp3"
 
-    audio = AudioSegment.from_mp3(input_file)
-    duration_ms = len(audio)
-    part_length = math.ceil(duration_ms / 4)
+        base_name = os.path.splitext(input_file)[0]
 
-    base_name = os.path.splitext(input_file)[0]
+        # First, get total duration (in seconds)
+        cmd = ["ffprobe", "-i", input_file, "-show_entries", "format=duration", "-v", "quiet", "-of", "csv=p=0"]
+        duration = float(subprocess.check_output(cmd).decode().strip())
+        part_length = math.ceil(duration / 4)
 
-    for i in range(4):
-        start = i * part_length
-        end = min((i + 1) * part_length, duration_ms)
-        part = audio[start:end]
-        part.export(f"{base_name}_part{i+1}.mp3", format="mp3")
+        # Split into 4 parts
+        for i in range(4):
+            start = i * part_length
+            output = f"{base_name}_part{i+1}.mp3"
+            subprocess.run([
+                "ffmpeg", "-y",
+                "-i", input_file,
+                "-ss", str(start),
+                "-t", str(part_length),
+                "-c", "copy",  # copy codec → no re-encoding
+                output
+            ]) 
 
-    print("Audio split into 4 parts.")
+        print("Audio split into 4 parts.")
+
+    except Exception as e:
+        print(f"Exception occurred while chunking audio: {e}")
+        time.sleep(10)
+        sys.exit()   # Exits the program
 
 def transcribe_audio():
     # Load environment variables
@@ -178,13 +201,16 @@ def summarize_transcription(transcription, upload_date, title):
     user_prompt += f"Transcript (Date: {upload_date}, Title: {title}): \n\n{transcription}"
 
     print("Sending to Claude for summarization...")
-    response = claude.messages.create(
-        model=model,
-        max_tokens=8000,
-        system=system_message,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
-    summary = response.content[0].text if response.content else ""
+    try:
+        response = claude.messages.create(
+            model=model,
+            max_tokens=8000,
+            system=system_message,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        summary = response.content[0].text if response.content else ""
+    except Exception as e:
+        summary = f"Exception occurred while deleting staging folder files: {e}"
 
     return summary
 
