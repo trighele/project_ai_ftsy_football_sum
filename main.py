@@ -6,6 +6,7 @@ import base64
 import math
 import datetime
 import yt_dlp
+from yt_dlp.utils import DownloadError
 import subprocess
 import anthropic
 import gradio as gr
@@ -14,37 +15,69 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 def download_audio(youtube_url):
-    try:
-        output_path = "./staging/audio.%(ext)s"
-
-        ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': output_path,
-        'postprocessors': [{
+    
+    primary_opts = {
+        "format": "bestaudio/best",
+        "outtmpl": "./staging/audio.%(ext)s",
+        "quiet": True,
+        "noplaylist": True,
+        "postprocessors": [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
-        }],
-        }
+        }]
+    }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=False)
+    fallback_opts = {
+        "format": "best",  # fallback if bestaudio isn't available
+        "outtmpl": "./staging/audio.%(ext)s",
+        "quiet": True,
+        "noplaylist": True,
+        "postprocessors": [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }]
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(primary_opts) as ydl:
+            info = ydl.extract_info(youtube_url, download=True)
             upload_date = info.get("upload_date")  # Format: YYYYMMDD
             title = info.get("title", "")
+
+            if upload_date:
+                dt = datetime.datetime.strptime(upload_date, "%Y%m%d")
+                upload_date_formatted = dt.strftime("%Y-%m-%d 00:00:00")
+            else:
+                upload_date_formatted = ""
+
             ydl.download([youtube_url])
+            return upload_date_formatted, title
+    except DownloadError as e:
+        print(f"[WARNING] Failed with bestaudio: {e}")
+        print("[INFO] Retrying with fallback format...")
 
-        # Convert to desired format: %Y-%m-%d %H:%M:%S
-        if upload_date:
-            dt = datetime.datetime.strptime(upload_date, "%Y%m%d")
-            upload_date_formatted = dt.strftime("%Y-%m-%d 00:00:00")
-        else:
-            upload_date_formatted = ""
+        try:
+            with yt_dlp.YoutubeDL(fallback_opts) as ydl:
+                info = ydl.extract_info(youtube_url, download=True)
+                upload_date = info.get("upload_date")  # Format: YYYYMMDD
+                title = info.get("title", "")
+                        
+                if upload_date:
+                    dt = datetime.datetime.strptime(upload_date, "%Y%m%d")
+                    upload_date_formatted = dt.strftime("%Y-%m-%d 00:00:00")
+                else:
+                    upload_date_formatted = ""
 
-        return upload_date_formatted, title
-    except Exception as e:
-        print(f"Exception occurred while downloading audio: {e}")
-        time.sleep(10)
-        sys.exit()
+                ydl.download([youtube_url])
+                return upload_date_formatted, title
+        except DownloadError as e2:
+            # If fallback also fails, re-raise so your app stops
+            raise RuntimeError(
+                f"Both bestaudio and fallback download failed for {youtube_url}"
+            ) from e2
+
 
 def chunk_audio():
     # Replace with your downloaded file name
