@@ -97,4 +97,5 @@ $RECYCLE.BIN/
 *.log.*.*
 
 # Notebooks
-notebooks/
+notebooks/playground
+notebooks/*.csv
