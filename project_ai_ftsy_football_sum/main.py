@@ -10,6 +10,8 @@ import subprocess
 import anthropic
 import gradio as gr
 
+from functions.pg_functions import get_player_data_from_db
+
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
@@ -180,30 +182,52 @@ def summarize_transcription(transcription, upload_date, title):
 
     model = os.getenv("CLAUDE_MODEL")
 
-    system_message = """
+    player_data = get_player_data_from_db(
+        host=os.getenv("PG_HOST"),
+        port=os.getenv("PG_PORT"),
+        dbname=os.getenv("PG_DB"),
+        user=os.getenv("PG_USER"),
+        password=os.getenv("PG_PASSWORD"),
+        season_year=2025
+    )
 
-    You are an assistant that analyzes and summarizes fantasy football podcast transcripts. 
+    # Convert player data into a readable table format
+    player_table = "### Player Reference Table\n\n"
+    player_table += "| Player Name | Position | Team | Tier |\n"
+    player_table += "|--------------|-----------|------|------|\n"
+    for p in player_data:
+        player_table += f"| {p['player_name']} | {p['position']} | {p['team']} | {p['tier']} |\n"
+    player_table += "\n"
+
+    system_message = f"""
+    You are an assistant that analyzes and summarizes fantasy football podcast transcripts.
     Your goal is to produce a structured Markdown summary.
 
-    Rules:
-    - Always respond in Markdown format. 
-    - Include the Date in the top of the summary.
-    - Include the Title in the top of the summary.
-    - Start with a `## News Section` heading.  
-    - Under the news section:
-    - Use bullet points (`-`) for each piece of news.  
-    - For each item, include:
-        - **Player/Team**: Name
-        - **News**: Short description
-        - **Sentiment**: Positive / Negative / Neutral (from a fantasy football perspective)
-    - After the news, create additional sections for the rest of the podcast discussion, such as:
-    - `## Matchup Analysis`
-    - `## Player Debates`
-    - `## Waiver Wire Suggestions`
-    - (Other relevant headings depending on content)
-    - Within each section, use bullet points to summarize the main points, arguments, or insights.  
-    - Keep the tone professional, clear, and concise.
+    You also have access to an **up-to-date player/team/tier reference table**.
+    Use this table to:
+    - Match player mentions to the correct team and position.
+    - Add tier context when relevant (e.g., "Tier 1 WR" or "Tier 2 RB").
+    - Ensure player names are correctly formatted.
+    - Avoid confusion with similarly named players or outdated teams.
 
+    Rules:
+    - Always respond in Markdown format.
+    - Include the Date and Title at the top of the summary.
+    - Start with a `## News Section` heading.
+        - Use bullet points (`-`) for each piece of news.
+        - For each item, include:
+            - **Player/Team**: Name (use player table for accuracy)
+            - **News**: Short description
+            - **Sentiment**: Positive / Negative / Neutral (fantasy football perspective)
+    - After the news, create sections for:
+        - `## Matchup Analysis`
+        - `## Player Debates`
+        - `## Waiver Wire Suggestions`
+        - (Other relevant sections depending on content)
+    - Use concise bullet points for each insight.
+    - Keep tone professional, clear, and concise.
+
+    {player_table}
     """
 
     user_prompt = "Here is a transcript of a fantasy football podcast."
