@@ -2,9 +2,6 @@ name: Local CI/CD for Kubernetes (Self-Hosted)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 env:
   IMAGE_NAME: project-ai-ftsy-football-sum
@@ -43,6 +40,11 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           HF_INFERENCE_ENDPOINT_URL: ${{ secrets.HF_INFERENCE_ENDPOINT_URL }}
+          PG_HOST: ${{ secrets.PG_HOST }}
+          PG_PORT: ${{ secrets.PG_PORT }}
+          PG_DB: ${{ vars.PG_DB }}
+          PG_USER: ${{ vars.PG_USER }}
+          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
         run: |
           kubectl create secret generic project-ai-ftsy-football-sum-secrets \
             --from-literal=HF_TOKEN="${{ env.HF_TOKEN }}" \
@@ -50,12 +52,18 @@ jobs:
             --from-literal=HF_INFERENCE_ENDPOINT_NAME="${{ env.HF_INFERENCE_ENDPOINT_NAME }}" \
             --from-literal=ANTHROPIC_API_KEY="${{ env.ANTHROPIC_API_KEY }}" \
             --from-literal=HF_INFERENCE_ENDPOINT_URL="${{ env.HF_INFERENCE_ENDPOINT_URL }}" \
+            --from-literal=PG_HOST="${{ env.PG_HOST }}" \
+            --from-literal=PG_PORT="${{ env.PG_PORT }}" \
+            --from-literal=PG_PASSWORD="${{ env.PG_PASSWORD }}" \
             --dry-run=client -o yaml \
           | kubectl apply -n "${{ env.NAMESPACE }}" -f -
 
           kubectl create configmap project-ai-ftsy-football-sum-config \
-            --from-literal=CLAUDE_MODEL=${{ env.CLAUDE_MODEL }} \
-            --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
+            --from-literal=CLAUDE_MODEL="${{ env.CLAUDE_MODEL }}" \
+            --from-literal=PG_DB="${{ env.PG_DB }}" \
+            --from-literal=PG_USER="${{ env.PG_USER }}" \
+            --dry-run=client -o yaml | kubectl apply -n "${{ env.NAMESPACE }}" -f -
+
 
       - name: Deploy to Kubernetes
         run: |
