@@ -2,9 +2,6 @@ name: Local CI/CD for Kubernetes (Self-Hosted)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 env:
   IMAGE_NAME: project-ai-ftsy-football-sum
