@@ -62,10 +62,11 @@ jobs:
           | kubectl apply -n "${{ env.NAMESPACE }}" -f -
 
           kubectl create configmap project-ai-ftsy-football-sum-config \
-            --from-literal=CLAUDE_MODEL=${{ env.CLAUDE_MODEL }} \
+            --from-literal=CLAUDE_MODEL="${{ env.CLAUDE_MODEL }}" \
             --from-literal=PG_DB="${{ env.PG_DB }}" \
-            --from-literal=PG_USER="${{ env.PG_USER }}" \            
-            --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
+            --from-literal=PG_USER="${{ env.PG_USER }}" \
+            --dry-run=client -o yaml | kubectl apply -n "${{ env.NAMESPACE }}" -f -
+
 
       - name: Deploy to Kubernetes
         run: |
