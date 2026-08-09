@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+    local-dev:
+        image: python:3.14-slim-bookworm
+        volumes:
+            - ..:/home/build/app:cached
+        environment:
+            - GIT_SAFE_DIRECTORY=*
+        command: sleep infinity

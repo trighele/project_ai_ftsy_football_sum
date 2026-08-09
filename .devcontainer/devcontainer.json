@@ -1,0 +1,23 @@
+{
+    "name": "local-ff_summary",
+    "dockerComposeFile": "./docker-compose.local.yml",
+    "service": "local-dev",
+    "workspaceFolder": "/home/build/app",
+    "mounts": ["source=${localEnv:USERPROFILE}\\.claude,target=/home/build/.claude,type=bind"],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "anthropic.claude-code",
+                "ms-python.python",
+                "ms-python.vscode-python-envs",
+                "ms-python.vscode-pylance"
+            ]
+        }
+    },
+    "forwardPorts": [7860],
+    "remoteUser": "root",
+    "remoteEnv": {
+        "UV_LINK_MODE": "copy"
+    },
+    "postCreateCommand": "bash .devcontainer/setup.sh"
+}
