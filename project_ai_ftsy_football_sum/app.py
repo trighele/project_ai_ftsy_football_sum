@@ -78,17 +78,18 @@ def create_app(*, container: Container | None = None) -> FastAPI:
         response body only on a 2xx and the message *is* the response the user
         asked for. Ticket 09 replaces the generic message with typed kinds.
         """
+        def failure(message: str) -> HTMLResponse:
+            return templates.TemplateResponse(
+                request, "fragments/failure.html", {"message": message}
+            )
+
         source = get_container(request).resolve("captions")
         try:
             episode = load_episode(source, youtube_url)
         except InvalidUrlError as error:
-            return templates.TemplateResponse(
-                request, "fragments/failure.html", {"message": str(error)}
-            )
+            return failure(str(error))
         except Exception:  # noqa: BLE001 — typed error kinds arrive in ticket 09
-            return templates.TemplateResponse(
-                request, "fragments/failure.html", {"message": GENERIC_FAILURE}
-            )
+            return failure(GENERIC_FAILURE)
         return templates.TemplateResponse(
             request, "fragments/episode.html", {"episode": episode}
         )

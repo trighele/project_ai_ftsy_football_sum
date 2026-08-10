@@ -89,6 +89,10 @@ SHORT_HOST = "youtu.be"
 #: A YouTube video identifier: exactly eleven URL-safe characters.
 _VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
+#: The one URL shape every YouTube service accepts. A share link, a scheme-less
+#: paste, or a `/shorts/` link is rebuilt into this before it goes anywhere.
+_WATCH_URL = "https://www.youtube.com/watch?v={}"
+
 #: The paths that carry the identifier in the path rather than the query.
 _ID_BEARING_PREFIXES = ("/live/", "/shorts/", "/embed/", "/v/")
 
@@ -125,6 +129,11 @@ def _checked_id(candidate: str) -> str:
     if not _VIDEO_ID.match(candidate):
         raise InvalidUrlError("That YouTube link does not name an episode.")
     return candidate
+
+
+def watch_url(video_id: str) -> str:
+    """The canonical watch URL for an episode."""
+    return _WATCH_URL.format(video_id)
 
 
 def select_track(tracks: Sequence[CaptionTrack]) -> CaptionTrack:
@@ -203,14 +212,18 @@ def describe_episode(source: EpisodeSource, url: str) -> EpisodeMetadata:
 
 
 def load_episode(source: EpisodeSource, url: str) -> Episode:
-    """Resolve a submitted URL into a readable episode."""
+    """Resolve a submitted URL into a readable episode.
+
+    What the user pasted is kept as the episode's URL — it is what they will
+    recognise in their history — but YouTube is always asked about the
+    canonical watch URL, which every one of its services accepts.
+    """
     video_id = video_id_from_url(url)
-    episode_url = url.strip()
     transcript = transcript_from(select_track(source.list_tracks(video_id)).fetch())
-    metadata = describe_episode(source, episode_url)
+    metadata = describe_episode(source, watch_url(video_id))
     return Episode(
         video_id=video_id,
-        url=episode_url,
+        url=url.strip(),
         transcript=transcript,
         title=metadata.title,
         channel=metadata.channel,

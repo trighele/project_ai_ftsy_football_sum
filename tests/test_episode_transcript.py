@@ -170,3 +170,16 @@ def test_a_captions_failure_reports_a_failure_rather_than_a_stack_trace(
     assert response.status_code == 200
     assert "Something went wrong" in response.text
     assert "Subtitles are disabled" not in response.text
+
+
+def test_metadata_is_requested_for_a_canonical_watch_url(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    """A shortened or scheme-less paste still has to reach yt-dlp and oEmbed
+    as a URL they accept."""
+    youtube.metadata_error = RuntimeError("HTTP Error 403: Forbidden")
+
+    client.post("/fragments/episode", data={"youtube_url": " youtu.be/dQw4w9WgXcQ "})
+
+    assert ("fetch_metadata", EPISODE_URL) in youtube.calls
+    assert ("fetch_oembed", EPISODE_URL) in youtube.calls
