@@ -22,7 +22,7 @@ Edge = Literal["captions", "nflverse", "claude"]
 #: implementation, resolving it raises. This mapping is the single place the
 #: set of edges is written down.
 EDGE_SOURCES: Mapping[Edge, str] = {
-    "captions": "the captions source (youtube-transcript-api)",
+    "captions": "the episode source (youtube-transcript-api, yt-dlp)",
     "nflverse": "the nflverse source (nflreadpy)",
     "claude": "the Claude client (anthropic)",
 }
@@ -44,6 +44,23 @@ def _unwired(edge: Edge) -> Callable[[], Any]:
     return factory
 
 
+def _captions() -> Any:
+    """Imported here so nothing outside a real run pays for the libraries."""
+    from project_ai_ftsy_football_sum.services.youtube import YouTubeSource
+
+    return YouTubeSource()
+
+
+#: The real factory for each edge that has an implementation. The rest raise
+#: until their ticket lands.
+DEFAULT_FACTORIES: Mapping[Edge, Callable[[], Any]] = {"captions": _captions}
+
+#: The edges still waiting for an implementation.
+UNWIRED_EDGES: tuple[Edge, ...] = tuple(
+    edge for edge in EDGES if edge not in DEFAULT_FACTORIES
+)
+
+
 class Container:
     """Lazily resolves each network edge, once, and lets tests override it.
 
@@ -57,7 +74,7 @@ class Container:
         self, *, factories: Mapping[Edge, Callable[[], Any]] | None = None
     ) -> None:
         self._factories: dict[Edge, Callable[[], Any]] = {
-            edge: _unwired(edge) for edge in EDGES
+            edge: DEFAULT_FACTORIES.get(edge, _unwired(edge)) for edge in EDGES
         }
         for edge, factory in (factories or {}).items():
             self._factories[self._checked(edge)] = factory

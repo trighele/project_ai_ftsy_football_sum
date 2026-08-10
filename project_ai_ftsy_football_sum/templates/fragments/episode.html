@@ -1,0 +1,20 @@
+<article class="rounded-lg border border-line bg-panel">
+  <header class="flex flex-col gap-3 border-b border-line px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
+    <div class="min-w-0">
+      <h2 class="heading text-xl leading-tight text-ink">{{ episode.title }}</h2>
+      {% if episode.channel %}
+        <p class="mt-1 text-sm text-muted">{{ episode.channel }}</p>
+      {% endif %}
+    </div>
+    <p
+      class="heading shrink-0 self-start rounded-md px-3 py-1.5 text-xs tabular-nums
+        {% if episode.upload_date %}bg-accent/15 text-accent{% else %}bg-panel text-muted ring-1 ring-line{% endif %}"
+      title="When the episode was uploaded"
+    >
+      {{ episode.upload_date_label }}
+    </p>
+  </header>
+  <div class="max-h-[32rem] overflow-y-auto px-6 py-5">
+    <p class="text-sm leading-relaxed text-ink/90">{{ episode.transcript }}</p>
+  </div>
+</article>

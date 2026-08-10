@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from project_ai_ftsy_football_sum.app import create_app
 from project_ai_ftsy_football_sum.container import Container
+from tests.fakes import FakeClaudeClient, FakeNflverseSource, FakeYouTubeSource
 
 
 @pytest.fixture(autouse=True)
@@ -35,24 +36,18 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket, "create_connection", blocked)
 
 
-class FakeCaptionsSource:
-    """Stand-in for the YouTube captions edge."""
-
-
-class FakeNflverseSource:
-    """Stand-in for the nflverse edge."""
-
-
-class FakeClaudeClient:
-    """Stand-in for the Claude client edge."""
+@pytest.fixture
+def youtube() -> FakeYouTubeSource:
+    """The captions edge, serving the fixture episode."""
+    return FakeYouTubeSource()
 
 
 @pytest.fixture
-def container() -> Container:
+def container(youtube: FakeYouTubeSource) -> Container:
     """A container with all three network edges replaced by fakes."""
     container = Container()
     container.override(
-        captions=FakeCaptionsSource(),
+        captions=youtube,
         nflverse=FakeNflverseSource(),
         claude=FakeClaudeClient(),
     )

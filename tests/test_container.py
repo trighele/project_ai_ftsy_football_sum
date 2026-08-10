@@ -11,9 +11,11 @@ from fastapi.testclient import TestClient
 from project_ai_ftsy_football_sum.app import create_app
 from project_ai_ftsy_football_sum.container import (
     EDGES,
+    UNWIRED_EDGES,
     Container,
     EdgeNotWiredError,
 )
+from project_ai_ftsy_football_sum.services.youtube import YouTubeSource
 
 
 class RecordingFactory:
@@ -51,12 +53,17 @@ def test_real_factory_is_used_when_not_overridden_and_resolved_once(edge: str) -
     assert real_factory.calls == 1
 
 
-@pytest.mark.parametrize("edge", EDGES)
+@pytest.mark.parametrize("edge", UNWIRED_EDGES)
 def test_unwired_edge_reports_which_source_supplies_it(edge: str) -> None:
     container = Container()
 
     with pytest.raises(EdgeNotWiredError, match=edge):
         container.resolve(edge)
+
+
+def test_the_captions_edge_resolves_to_the_real_youtube_source() -> None:
+    """Building the edge must not open a connection — only using it does."""
+    assert isinstance(Container().resolve("captions"), YouTubeSource)
 
 
 def test_unknown_edge_is_rejected() -> None:
@@ -97,7 +104,7 @@ def test_status_fragment_reports_not_ready_without_overrides() -> None:
 
     assert response.status_code == 200
     assert "Not ready" in response.text
-    for edge in EDGES:
+    for edge in UNWIRED_EDGES:
         assert edge in response.text
 
 

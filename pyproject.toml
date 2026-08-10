@@ -11,8 +11,10 @@ dependencies = [
     "jinja2>=3.1.6",
     "psycopg2-binary>=2.9.12",
     "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.32",
     "requests>=2.34.2",
     "uvicorn[standard]>=0.52.1",
+    "youtube-transcript-api>=1.2.4",
     "yt-dlp>=2026.7.4",
 ]
 

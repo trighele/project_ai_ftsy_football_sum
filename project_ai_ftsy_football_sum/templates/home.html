@@ -11,7 +11,14 @@
       written against a current NFL player reference.
     </p>
 
-    <form class="mt-8 flex flex-col gap-3 sm:flex-row" onsubmit="return false;">
+    <form
+      class="mt-8 flex flex-col gap-3 sm:flex-row"
+      hx-post="/fragments/episode"
+      hx-target="#episode"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button"
+      hx-indicator="#episode-loading"
+    >
       <label class="sr-only" for="youtube_url">YouTube URL</label>
       <input
         id="youtube_url"
@@ -30,11 +37,23 @@
       </button>
     </form>
 
-    <div class="mt-10 rounded-lg border border-dashed border-line px-6 py-12 text-center">
-      <p class="heading text-xs text-muted">No episode loaded</p>
-      <p class="mt-2 text-sm text-muted/70">
-        The transcript and summary will appear here.
-      </p>
+    {# `htmx-indicator` is htmx's own class: hidden until the request is in
+       flight, shown while it is. htmx supplies the two rules itself. #}
+    <p
+      id="episode-loading"
+      class="htmx-indicator heading mt-6 text-xs text-accent"
+      aria-live="polite"
+    >
+      Fetching captions&hellip;
+    </p>
+
+    <div id="episode" class="mt-4">
+      <div class="rounded-lg border border-dashed border-line px-6 py-12 text-center">
+        <p class="heading text-xs text-muted">No episode loaded</p>
+        <p class="mt-2 text-sm text-muted/70">
+          The transcript and summary will appear here.
+        </p>
+      </div>
     </div>
   </section>
 {% endblock %}
