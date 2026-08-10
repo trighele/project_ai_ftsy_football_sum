@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}{{ run.title }} &middot; Fantasy Football Podcast Summarizer{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-3xl">
+    <div class="flex flex-wrap items-baseline justify-between gap-3">
+      <a href="/" class="heading text-xs text-muted hover:text-accent">&larr; Back</a>
+      <p class="heading text-[0.65rem] tabular-nums text-muted/70">
+        Summarized {{ run.created_at_label }}
+      </p>
+    </div>
+
+    {# The same panel the run rendered when it was live: a reopened run is not
+       a lesser view of the episode. #}
+    <div class="mt-4">
+      {% with episode = run %}
+        {% include "fragments/episode.html" %}
+      {% endwith %}
+    </div>
+
+    <p class="mt-6 text-xs text-muted">
+      Source:
+      <a href="{{ run.url }}" rel="noreferrer" class="text-accent hover:underline">
+        {{ run.url }}
+      </a>
+    </p>
+  </section>
+{% endblock %}

@@ -57,15 +57,26 @@ class Episode:
 
     @property
     def upload_date_label(self) -> str:
-        """How the upload date is put to the reader, or that we don't know it.
+        """How this episode's upload date is put to the reader."""
+        return upload_date_label(self.upload_date)
 
-        The date is how a reader tells whether an episode's news predates the
-        most recent slate of games, so an unknown one says so out loud rather
-        than rendering as a blank space.
-        """
-        if self.upload_date is None:
-            return "Upload date unknown"
-        return f"{self.upload_date.day} {self.upload_date:%B %Y}"
+
+def date_label(value: date) -> str:
+    """The one way a date is written anywhere in the interface."""
+    return f"{value.day} {value:%B %Y}"
+
+
+def upload_date_label(upload_date: date | None) -> str:
+    """Put an upload date to the reader, or say that we don't know it.
+
+    The date is how a reader tells whether an episode's news predates the most
+    recent slate of games, so an unknown one says so out loud rather than
+    rendering as a blank space. A live episode and a saved run phrase it
+    identically because both go through here.
+    """
+    if upload_date is None:
+        return "Upload date unknown"
+    return date_label(upload_date)
 
 
 class InvalidUrlError(ValueError):

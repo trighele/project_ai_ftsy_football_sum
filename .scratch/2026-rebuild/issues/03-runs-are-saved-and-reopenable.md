@@ -10,10 +10,10 @@ A run record carries the submitted URL, the video identifier, title, channel, up
 
 **Status:** ready-for-agent
 
-- [ ] A completed run is persisted automatically, with no explicit save action.
-- [ ] The five most recent runs appear on the home page with enough detail to identify the episode.
-- [ ] Clicking a recent run opens a detail view showing its transcript, title, channel, and upload date.
-- [ ] The SQLite file location is read from configuration, not hardcoded.
-- [ ] The schema is created on first startup when the database file does not exist.
-- [ ] A test proves runs written by one application instance are readable by a fresh one.
-- [ ] Tests continue to make no network calls.
+- [x] A completed run is persisted automatically, with no explicit save action.
+- [x] The five most recent runs appear on the home page with enough detail to identify the episode.
+- [x] Clicking a recent run opens a detail view showing its transcript, title, channel, and upload date.
+- [x] The SQLite file location is read from configuration, not hardcoded.
+- [x] The schema is created on first startup when the database file does not exist.
+- [x] A test proves runs written by one application instance are readable by a fresh one.
+- [x] Tests continue to make no network calls.

@@ -1,0 +1,236 @@
+"""Every run is saved, listed on the home page, and reopenable afterwards.
+
+Driven through the HTTP boundary like the rest of the suite. The store is not
+a network edge, so it is not faked: a real SQLite file in a temporary directory
+is the thing under test, and the restart test would prove nothing against a
+fake.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from httpx import Response
+
+from project_ai_ftsy_football_sum.app import RECENT_RUN_LIMIT, create_app
+from project_ai_ftsy_football_sum.config import (
+    DATA_DIR_VARIABLE,
+    DATABASE_FILENAME,
+    database_path,
+)
+from project_ai_ftsy_football_sum.container import Container
+from project_ai_ftsy_football_sum.services.store import RunStore
+from tests.fakes import FakeYouTubeSource, fixture
+
+EPISODE_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+EPISODE_TITLE = "Week 1 Waiver Wire Targets"
+TRANSCRIPT_OPENING = "Welcome back to the Fantasy Fallout podcast."
+
+
+def submit(client: TestClient, url: str = EPISODE_URL) -> Response:
+    return client.post("/fragments/episode", data={"youtube_url": url})
+
+
+def submit_titled(client: TestClient, youtube: FakeYouTubeSource, title: str) -> None:
+    """Run one episode that can be told apart from the others by its title."""
+    youtube.metadata = {**fixture("metadata"), "title": title}
+    submit(client)
+
+
+def run_links(body: str) -> list[str]:
+    """The `/runs/<id>` hrefs on a page, in the order they appear."""
+    return re.findall(r'href="(/runs/\d+)"', body)
+
+
+def test_a_completed_run_is_saved_with_no_explicit_save_action(
+    client: TestClient,
+) -> None:
+    """Submitting the URL is the whole interaction — there is no save button."""
+    submit(client)
+
+    body = client.get("/").text
+
+    assert EPISODE_TITLE in body
+    assert run_links(body)
+
+
+def test_a_failed_run_is_not_saved(client: TestClient, youtube: FakeYouTubeSource) -> None:
+    youtube.captions_error = RuntimeError("Subtitles are disabled for this video")
+
+    submit(client)
+
+    assert run_links(client.get("/").text) == []
+
+
+def test_a_rejected_url_is_not_saved(client: TestClient) -> None:
+    submit(client, "https://vimeo.com/123456789")
+
+    assert run_links(client.get("/").text) == []
+
+
+def test_the_home_page_lists_the_five_most_recent_runs(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    for number in range(1, 8):
+        submit_titled(client, youtube, f"Episode {number}")
+
+    body = client.get("/").text
+
+    assert len(run_links(body)) == RECENT_RUN_LIMIT
+    for number in (7, 6, 5, 4, 3):
+        assert f"Episode {number}" in body
+    for number in (2, 1):
+        assert f"Episode {number}" not in body
+
+
+def test_the_most_recent_run_is_listed_first(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    for number in (1, 2, 3):
+        submit_titled(client, youtube, f"Episode {number}")
+
+    body = client.get("/").text
+
+    assert body.index("Episode 3") < body.index("Episode 2") < body.index("Episode 1")
+
+
+def test_a_listed_run_carries_enough_detail_to_identify_the_episode(
+    client: TestClient,
+) -> None:
+    submit(client)
+
+    body = client.get("/").text
+    listing = body[body.index("Recent runs") :]
+
+    assert EPISODE_TITLE in listing
+    assert "Fantasy Fallout" in listing
+    assert "7 August 2026" in listing
+
+
+def test_the_home_page_says_so_when_nothing_has_been_run_yet(
+    client: TestClient,
+) -> None:
+    body = client.get("/").text
+
+    assert "No runs yet" in body
+    assert run_links(body) == []
+
+
+def test_clicking_a_recent_run_opens_it_with_its_transcript_intact(
+    client: TestClient,
+) -> None:
+    submit(client)
+    href = run_links(client.get("/").text)[0]
+
+    response = client.get(href)
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    body = response.text
+    assert TRANSCRIPT_OPENING in body
+    assert "the Falcons are talking about a bigger role." in body
+    assert EPISODE_TITLE in body
+    assert "Fantasy Fallout" in body
+    assert "7 August 2026" in body
+
+
+def test_a_reopened_run_links_back_to_the_episode_on_youtube(
+    client: TestClient,
+) -> None:
+    submit(client)
+
+    body = client.get(run_links(client.get("/").text)[0]).text
+
+    assert EPISODE_URL in body
+
+
+def test_reopening_a_run_that_does_not_exist_is_a_404(client: TestClient) -> None:
+    assert client.get("/runs/404404").status_code == 404
+
+
+def test_the_recent_list_updates_without_a_page_reload(client: TestClient) -> None:
+    """The fragment carries an out-of-band swap so the list is never stale."""
+    body = submit(client).text
+
+    assert 'id="recent-runs"' in body
+    assert 'hx-swap-oob="true"' in body
+    assert EPISODE_TITLE in body
+
+
+def test_runs_written_by_one_application_instance_are_read_by_a_fresh_one(
+    tmp_path: Path, container: Container
+) -> None:
+    """The point of persisting at all: a restart must not lose the work."""
+    database = tmp_path / "restart.db"
+
+    with TestClient(create_app(container=container, store=RunStore(database))) as first:
+        submit(first)
+        href = run_links(first.get("/").text)[0]
+
+    with TestClient(create_app(container=container, store=RunStore(database))) as second:
+        listing = second.get("/")
+        reopened = second.get(href)
+
+    assert EPISODE_TITLE in listing.text
+    assert reopened.status_code == 200
+    assert TRANSCRIPT_OPENING in reopened.text
+
+
+def test_the_database_location_is_read_from_configuration(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Ticket 10 mounts a volume at this path; no code changes when it does."""
+    monkeypatch.setenv(DATA_DIR_VARIABLE, str(tmp_path / "mounted"))
+
+    assert database_path() == tmp_path / "mounted" / DATABASE_FILENAME
+
+
+def test_the_schema_is_created_on_startup_when_the_database_is_absent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, container: Container
+) -> None:
+    data_dir = tmp_path / "not-created-yet"
+    monkeypatch.setenv(DATA_DIR_VARIABLE, str(data_dir))
+    assert not data_dir.exists()
+
+    with TestClient(create_app(container=container)) as client:
+        submit(client)
+        assert EPISODE_TITLE in client.get("/").text
+
+    assert (data_dir / DATABASE_FILENAME).is_file()
+
+
+def test_starting_up_against_an_existing_database_keeps_its_runs(
+    tmp_path: Path, container: Container
+) -> None:
+    """Schema creation is idempotent — it must not wipe what is already there."""
+    database = tmp_path / "existing.db"
+
+    with TestClient(create_app(container=container, store=RunStore(database))) as first:
+        submit(first)
+
+    with TestClient(create_app(container=container, store=RunStore(database))) as second:
+        assert len(run_links(second.get("/").text)) == 1
+
+
+def test_a_saved_run_records_the_fields_later_tickets_fill_in(
+    client: TestClient, app_store: RunStore
+) -> None:
+    """Summary, model, and season are defined now so 04 and 08 need no migration."""
+    submit(client)
+
+    run = app_store.recent(1)[0]
+
+    assert run.url == EPISODE_URL
+    assert run.video_id == "dQw4w9WgXcQ"
+    assert run.title == EPISODE_TITLE
+    assert run.channel == "Fantasy Fallout"
+    assert run.upload_date is not None and run.upload_date.year == 2026
+    assert run.transcript.startswith(TRANSCRIPT_OPENING)
+    assert run.created_at is not None
+    assert run.duration_seconds >= 0
+    assert run.summary is None
+    assert run.model is None
+    assert run.season is None

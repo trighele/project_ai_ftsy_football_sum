@@ -43,7 +43,9 @@ uv run pytest
 
 The three network edges (captions, nflverse, Claude) resolve through `container.py` and nothing else. The `captions` edge is everything the app asks YouTube for — caption tracks via `youtube-transcript-api` *and* title/upload-date via `yt-dlp`, plus the oEmbed fallback — all behind one object (`services/youtube.py`), so there is one thing to fake and one thing to fail when YouTube is unhappy. `nflverse` and `claude` are still unwired and raise on resolve; `container.UNWIRED_EDGES` is the list.
 
-Tests drive the app through `TestClient` with fakes registered on the container; an autouse fixture in `tests/conftest.py` blocks sockets, so a test that reaches the network fails rather than hangs. `tests/fakes.py` holds the edge fakes and `tests/fixtures/*.json` the recorded payloads they serve. `tests/test_youtube_source.py` is the single exception to the HTTP-only seam: yt-dlp downloading audio is invisible from outside the app, so its collaborators are injected and asserted on directly.
+Saved runs live in one SQLite file (`services/store.py`), at `$FFSUM_DATA_DIR/ffsum.db` — a *directory* rather than a file path, because ticket 10 mounts one volume there and the cached player reference lands on it too. `config.py` is the only place that path is decided; it defaults to `./data` (gitignored). The schema is created in the app's lifespan startup, not when the store is constructed, so importing `app.py` touches no disk. The store is not a container edge — it is local disk, and tests exercise the real thing against a `tmp_path`.
+
+Tests drive the app through `TestClient` with fakes registered on the container; an autouse fixture in `tests/conftest.py` blocks sockets, so a test that reaches the network fails rather than hangs. Another autouse fixture points `FFSUM_DATA_DIR` at a temporary directory, so no test can write into the working tree. `tests/fakes.py` holds the edge fakes and `tests/fixtures/*.json` the recorded payloads they serve. `tests/test_youtube_source.py` is the single exception to the HTTP-only seam: yt-dlp downloading audio is invisible from outside the app, so its collaborators are injected and asserted on directly.
 
 There is no linter config or CI check wired into this repo (`ruff` appears only as a transitive pin in `requirements.txt`, not a configured tool), and the Gradio app has no tests. The GitHub Actions workflow (`.github/workflows/deployment.yml`) is `workflow_dispatch`-only (manual) and deploys to a self-hosted k8s cluster — it is not a PR/CI gate.
 
@@ -58,6 +60,10 @@ Required at runtime (loaded via `dotenv` from a `.env` file at repo root):
 - `HF_TOKEN`, `HF_NAMESPACE`, `HF_INFERENCE_ENDPOINT_NAME`, `HF_INFERENCE_ENDPOINT_URL` — Hugging Face Inference Endpoint hosting Whisper, used for transcription.
 - `ANTHROPIC_API_KEY`, `CLAUDE_MODEL` — Claude API access for summarization.
 - `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, `PG_PASSWORD` — Postgres connection for the player/tier reference table (not documented in README.md, but required by `summarize_transcription`).
+
+Read by the 2026 rebuild app only, optional, and **not** loaded from `.env` — that app never calls `load_dotenv`, so this has to be set in the real environment (Compose, the k8s ConfigMap, or the shell):
+
+- `FFSUM_DATA_DIR` — directory holding the SQLite database of saved runs. Defaults to `./data`. Set it to the mounted volume path in a deployment.
 
 ## Architecture
 
