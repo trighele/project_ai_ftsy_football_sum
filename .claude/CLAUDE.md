@@ -41,7 +41,11 @@ uv run pytest
 
 `project_ai_ftsy_football_sum/static/css/app.css` is **generated** — edit `assets/tailwind.css` and rebuild. It is committed deliberately so neither the Docker image nor a plain `uv run` needs Node; `scripts/build-css.sh` downloads the Tailwind standalone CLI into the gitignored `.tools/`. `static/js/htmx.min.js` (official dist) and `static/fonts/oswald-latin-var.woff2` (SIL OFL, licence alongside it) are vendored for the same reason. There are no CDN references anywhere in the templates or the stylesheet.
 
-The three network edges (captions, nflverse, Claude) resolve through `container.py` and nothing else. The `captions` edge is everything the app asks YouTube for — caption tracks via `youtube-transcript-api` *and* title/upload-date via `yt-dlp`, plus the oEmbed fallback — all behind one object (`services/youtube.py`), so there is one thing to fake and one thing to fail when YouTube is unhappy. `nflverse` and `claude` are still unwired and raise on resolve; `container.UNWIRED_EDGES` is the list.
+The three network edges (captions, nflverse, Claude) resolve through `container.py` and nothing else. The `captions` edge is everything the app asks YouTube for — caption tracks via `youtube-transcript-api` *and* title/upload-date via `yt-dlp`, plus the oEmbed fallback — all behind one object (`services/youtube.py`), so there is one thing to fake and one thing to fail when YouTube is unhappy. The `claude` edge (`services/claude.py`) is one streamed summarization request; it deliberately refuses to build without credentials so the readiness pill reports a missing `ANTHROPIC_API_KEY` rather than a run failing halfway. `nflverse` is still unwired and raises on resolve; `container.UNWIRED_EDGES` is the list.
+
+A run is started by `POST /runs`, which returns immediately with a panel naming the run's event stream. The work happens in an in-process background task (`services/runs.py`, run on a worker thread because every edge is a blocking library) and progress reaches the browser as Server-Sent Events on `GET /runs/{token}/events`: `stage` transitions, the rendered `transcript` panel, `summary` text a delta at a time, and exactly one terminal `done` or `failed` carrying an error kind. Events are buffered per run, because the browser starts a run and follows it in two separate requests. An in-flight run does not survive a restart; there is no queue and no worker process. `static/js/run.js` is the only client-side code — it moves server-rendered fragments into place and keeps the Summarize button disabled until the run ends.
+
+What Claude is handed is built in `services/summarize.py` and nowhere else, as a `SummaryRequest` that is the whole of what the edge receives — so `tests/fakes.py`'s recording fake can be asserted on byte for byte, which is what ticket 08's player reference needs.
 
 Saved runs live in one SQLite file (`services/store.py`), at `$FFSUM_DATA_DIR/ffsum.db` — a *directory* rather than a file path, because ticket 10 mounts one volume there and the cached player reference lands on it too. `config.py` is the only place that path is decided; it defaults to `./data` (gitignored). The schema is created in the app's lifespan startup, not when the store is constructed, so importing `app.py` touches no disk. The store is not a container edge — it is local disk, and tests exercise the real thing against a `tmp_path`.
 
@@ -61,9 +65,11 @@ Required at runtime (loaded via `dotenv` from a `.env` file at repo root):
 - `ANTHROPIC_API_KEY`, `CLAUDE_MODEL` — Claude API access for summarization.
 - `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, `PG_PASSWORD` — Postgres connection for the player/tier reference table (not documented in README.md, but required by `summarize_transcription`).
 
-Read by the 2026 rebuild app only, optional, and **not** loaded from `.env` — that app never calls `load_dotenv`, so this has to be set in the real environment (Compose, the k8s ConfigMap, or the shell):
+Read by the 2026 rebuild app, and **not** loaded from `.env` — that app never calls `load_dotenv`, so these have to be set in the real environment (Compose, the k8s ConfigMap, or the shell):
 
-- `FFSUM_DATA_DIR` — directory holding the SQLite database of saved runs. Defaults to `./data`. Set it to the mounted volume path in a deployment.
+- `FFSUM_DATA_DIR` — optional. Directory holding the SQLite database of saved runs. Defaults to `./data`. Set it to the mounted volume path in a deployment.
+- `ANTHROPIC_API_KEY` — required for a run to get past the transcript. Without it the readiness pill reads "Not ready".
+- `CLAUDE_MODEL` — optional. Defaults to `claude-sonnet-5`. Same variable the Gradio app uses, so an existing deployment's value still applies.
 
 ## Architecture
 

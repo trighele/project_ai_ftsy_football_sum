@@ -14,13 +14,13 @@ This ticket also introduces the recording fake Claude client that ticket 08's as
 
 **Status:** ready-for-agent
 
-- [ ] One click produces both a transcript and a summary; there is no separate summarize step.
-- [ ] The transcript renders before summarization begins and stays visible while the summary streams.
-- [ ] Summary text appears incrementally rather than all at once on completion.
-- [ ] Stage transitions are visible to the user as the run progresses.
-- [ ] The Summarize button is disabled while a run is in flight.
-- [ ] The completed summary, the model used, and the run duration are saved to the run record.
-- [ ] Reopening a saved run shows its summary as well as its transcript.
-- [ ] The summary preserves the existing section structure and per-item fantasy sentiment.
-- [ ] A test asserts the SSE event sequence for a successful run.
-- [ ] The fake Claude client records the full request it received and is available to later tests.
+- [x] One click produces both a transcript and a summary; there is no separate summarize step.
+- [x] The transcript renders before summarization begins and stays visible while the summary streams.
+- [x] Summary text appears incrementally rather than all at once on completion.
+- [x] Stage transitions are visible to the user as the run progresses.
+- [x] The Summarize button is disabled while a run is in flight.
+- [x] The completed summary, the model used, and the run duration are saved to the run record.
+- [x] Reopening a saved run shows its summary as well as its transcript.
+- [x] The summary preserves the existing section structure and per-item fantasy sentiment.
+- [x] A test asserts the SSE event sequence for a successful run.
+- [x] The fake Claude client records the full request it received and is available to later tests.

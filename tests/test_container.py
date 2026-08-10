@@ -15,6 +15,7 @@ from project_ai_ftsy_football_sum.container import (
     Container,
     EdgeNotWiredError,
 )
+from project_ai_ftsy_football_sum.services.claude import ClaudeClient
 from project_ai_ftsy_football_sum.services.youtube import YouTubeSource
 
 
@@ -64,6 +65,29 @@ def test_unwired_edge_reports_which_source_supplies_it(edge: str) -> None:
 def test_the_captions_edge_resolves_to_the_real_youtube_source() -> None:
     """Building the edge must not open a connection — only using it does."""
     assert isinstance(Container().resolve("captions"), YouTubeSource)
+
+
+def test_the_claude_edge_resolves_to_the_real_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-not-a-real-key")
+
+    assert isinstance(Container().resolve("claude"), ClaudeClient)
+
+
+def test_the_claude_edge_is_unavailable_without_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The readiness pill is the right place to learn the API key is missing.
+
+    The SDK would not say so until the first request, which is halfway
+    through somebody's run.
+    """
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+
+    with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
+        Container().resolve("claude")
 
 
 def test_unknown_edge_is_rejected() -> None:

@@ -13,11 +13,9 @@
 
     <form
       class="mt-8 flex flex-col gap-3 sm:flex-row"
-      hx-post="/fragments/episode"
-      hx-target="#episode"
-      hx-swap="innerHTML"
-      hx-disabled-elt="find button"
-      hx-indicator="#episode-loading"
+      action="/runs"
+      method="post"
+      data-run-form
     >
       <label class="sr-only" for="youtube_url">YouTube URL</label>
       <input
@@ -31,23 +29,20 @@
       />
       <button
         type="submit"
-        class="heading rounded-md bg-accent px-6 py-3 text-sm text-accent-ink hover:bg-accent-bright focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+        class="heading rounded-md bg-accent px-6 py-3 text-sm text-accent-ink hover:bg-accent-bright focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-accent/30 disabled:text-ink/50"
       >
         Summarize
       </button>
     </form>
 
-    {# `htmx-indicator` is htmx's own class: hidden until the request is in
-       flight, shown while it is. htmx supplies the two rules itself. #}
-    <p
-      id="episode-loading"
-      class="htmx-indicator heading mt-6 text-xs text-accent"
-      aria-live="polite"
-    >
-      Fetching captions&hellip;
-    </p>
+    <noscript>
+      <p class="mt-6 text-sm text-muted">
+        A summary arrives as it is written, over a live connection, so this
+        page needs JavaScript enabled.
+      </p>
+    </noscript>
 
-    <div id="episode" class="mt-4">
+    <div id="episode" class="mt-6">
       <div class="rounded-lg border border-dashed border-line px-6 py-12 text-center">
         <p class="heading text-xs text-muted">No episode loaded</p>
         <p class="mt-2 text-sm text-muted/70">
@@ -58,4 +53,8 @@
 
     {% include "fragments/recent_runs.html" %}
   </section>
+{% endblock %}
+
+{% block scripts %}
+  <script defer src="{{ url_for('static', path='/js/run.js') }}"></script>
 {% endblock %}

@@ -1,8 +1,0 @@
-{# What the home page gets back when a run finishes: the episode itself, plus
-   the recent-runs list, which the run just made out of date. Both are
-   top-level elements, which is what lets htmx swap the first into `#episode`
-   and the second into `#recent-runs` out of band. #}
-{% include "fragments/episode.html" %}
-{% with oob = true %}
-  {% include "fragments/recent_runs.html" %}
-{% endwith %}

@@ -220,23 +220,3 @@ def describe_episode(source: EpisodeSource, url: str) -> EpisodeMetadata:
         return metadata_from_oembed(source.fetch_oembed(url))
     except Exception:  # noqa: BLE001 — the run survives without a title
         return EpisodeMetadata(title=FALLBACK_TITLE)
-
-
-def load_episode(source: EpisodeSource, url: str) -> Episode:
-    """Resolve a submitted URL into a readable episode.
-
-    What the user pasted is kept as the episode's URL — it is what they will
-    recognise in their history — but YouTube is always asked about the
-    canonical watch URL, which every one of its services accepts.
-    """
-    video_id = video_id_from_url(url)
-    transcript = transcript_from(select_track(source.list_tracks(video_id)).fetch())
-    metadata = describe_episode(source, watch_url(video_id))
-    return Episode(
-        video_id=video_id,
-        url=url.strip(),
-        transcript=transcript,
-        title=metadata.title,
-        channel=metadata.channel,
-        upload_date=metadata.upload_date,
-    )

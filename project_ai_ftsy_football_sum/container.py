@@ -51,9 +51,19 @@ def _captions() -> Any:
     return YouTubeSource()
 
 
+def _claude() -> Any:
+    """Imported here so nothing outside a real run pays for the SDK."""
+    from project_ai_ftsy_football_sum.services.claude import ClaudeClient
+
+    return ClaudeClient()
+
+
 #: The real factory for each edge that has an implementation. The rest raise
 #: until their ticket lands.
-DEFAULT_FACTORIES: Mapping[Edge, Callable[[], Any]] = {"captions": _captions}
+DEFAULT_FACTORIES: Mapping[Edge, Callable[[], Any]] = {
+    "captions": _captions,
+    "claude": _claude,
+}
 
 #: The edges still waiting for an implementation.
 UNWIRED_EDGES: tuple[Edge, ...] = tuple(

@@ -1,0 +1,21 @@
+{# The summary panel, used both while a run writes one and when a saved run is
+   reopened, so a reopened run is not a lesser view of the work. It starts
+   hidden when there is nothing in it yet; `run.js` reveals it on the first
+   piece of text that arrives.
+
+   The summary is Markdown, and is shown as the Markdown Claude wrote — the
+   same text the download in ticket 05 hands over. #}
+<section
+  class="mt-4 rounded-lg border border-line bg-panel {% if not summary %}hidden{% endif %}"
+  data-run-summary-panel
+>
+  <header class="border-b border-line px-6 py-4">
+    <h2 class="heading text-xs text-muted">Summary</h2>
+  </header>
+  <div class="px-6 py-5">
+    <div
+      class="text-sm leading-relaxed whitespace-pre-wrap text-ink/90"
+      data-run-summary
+    >{{ summary or "" }}</div>
+  </div>
+</section>

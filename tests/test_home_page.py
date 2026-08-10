@@ -67,10 +67,12 @@ def test_home_page_wires_the_status_pill_to_the_fragment(client: TestClient) -> 
     assert 'hx-get="/fragments/status"' in body
 
 
-def test_home_form_submits_the_url_to_the_episode_fragment(client: TestClient) -> None:
-    """One click: the form posts the URL and swaps the result in place."""
+def test_home_form_starts_a_run_and_has_somewhere_to_put_it(
+    client: TestClient,
+) -> None:
+    """One click: the form starts a run, which fills the panel below it."""
     body = client.get("/").text
 
-    assert 'hx-post="/fragments/episode"' in body
-    assert 'hx-target="#episode"' in body
+    assert 'action="/runs"' in body
+    assert "data-run-form" in body
     assert 'id="episode"' in body

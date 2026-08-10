@@ -1,9 +1,9 @@
-"""Where the application keeps the things it must not lose on a restart.
+"""Everything the environment gets to decide, and the defaults when it doesn't.
 
-One directory holds all of it: the saved runs, and later the cached player
-reference. It is a directory rather than a file path so that a deployment
-mounts a single volume here and the application needs no further configuration
-to put a second thing on it.
+The data directory holds what the application must not lose on a restart: the
+saved runs, and later the cached player reference. It is a directory rather
+than a file path so that a deployment mounts a single volume here and the
+application needs no further configuration to put a second thing on it.
 """
 
 from __future__ import annotations
@@ -31,3 +31,17 @@ def data_dir() -> Path:
 def database_path() -> Path:
     """The SQLite file the application reads and writes."""
     return data_dir() / DATABASE_FILENAME
+
+
+#: The environment variable naming the model. Kept from the Gradio app, so an
+#: existing deployment's configuration still means what it used to.
+MODEL_VARIABLE = "CLAUDE_MODEL"
+
+#: What summaries are written with unless the environment says otherwise.
+DEFAULT_MODEL = "claude-sonnet-5"
+
+
+def claude_model() -> str:
+    """The model every summary is written with."""
+    configured = os.environ.get(MODEL_VARIABLE, "").strip()
+    return configured or DEFAULT_MODEL

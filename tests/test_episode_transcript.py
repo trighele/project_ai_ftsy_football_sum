@@ -1,30 +1,29 @@
 """Pasting a YouTube URL and clicking once renders the episode's transcript.
 
 Driven through the HTTP boundary with the captions edge faked, as the spec's
-single seam requires.
+single seam requires: a run is started and followed, and the transcript is
+read out of the panel the run streamed back.
 """
 
 import pytest
 from fastapi.testclient import TestClient
 
+from tests import events as sse
+from tests.events import EPISODE_URL, run_episode
 from tests.fakes import FakeYouTubeSource, generated_track, manual_track
 
 MANUAL_TEXT = "Welcome back to the Fantasy Fallout podcast."
 GENERATED_TEXT = "welcome back to the fantasy fallout"
 
-EPISODE_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-
-def submit(client: TestClient, url: str = EPISODE_URL):
-    return client.post("/fragments/episode", data={"youtube_url": url})
+def transcript(client: TestClient, url: str = EPISODE_URL) -> str:
+    """The episode panel a run rendered for that URL."""
+    return sse.transcript_html(run_episode(client, url))
 
 
 def test_submitting_a_url_renders_the_transcript(client: TestClient) -> None:
-    response = submit(client)
+    body = transcript(client)
 
-    assert response.status_code == 200
-    assert "text/html" in response.headers["content-type"]
-    body = response.text
     assert "Welcome back to the Fantasy Fallout podcast." in body
     assert "the Falcons are talking about a bigger role." in body
 
@@ -32,7 +31,7 @@ def test_submitting_a_url_renders_the_transcript(client: TestClient) -> None:
 def test_title_channel_and_upload_date_render_alongside_the_transcript(
     client: TestClient,
 ) -> None:
-    body = submit(client).text
+    body = transcript(client)
 
     assert "Week 1 Waiver Wire Targets" in body
     assert "Fantasy Fallout" in body
@@ -42,7 +41,7 @@ def test_title_channel_and_upload_date_render_alongside_the_transcript(
 def test_segments_are_joined_into_one_transcript_with_no_timestamps(
     client: TestClient,
 ) -> None:
-    body = submit(client).text
+    body = transcript(client)
 
     assert "podcast. Bijan Robinson looked electric in the preseason opener," in body
     assert "3.2" not in body
@@ -55,7 +54,7 @@ def test_uploaded_track_is_preferred_over_an_auto_generated_one(
     """Both exist for the fixture episode; the uploaded one is the better text."""
     youtube.tracks = [generated_track(), manual_track()]
 
-    body = submit(client).text
+    body = transcript(client)
 
     assert MANUAL_TEXT in body
     assert GENERATED_TEXT not in body
@@ -66,7 +65,7 @@ def test_auto_generated_track_is_used_when_nothing_was_uploaded(
 ) -> None:
     youtube.tracks = [generated_track()]
 
-    body = submit(client).text
+    body = transcript(client)
 
     assert GENERATED_TEXT in body
 
@@ -78,7 +77,7 @@ def test_english_is_preferred_over_other_languages(
     spanish.snippets = [{"text": "Bienvenidos de nuevo.", "start": 0.0, "duration": 2.0}]
     youtube.tracks = [spanish, generated_track(language_code="en")]
 
-    body = submit(client).text
+    body = transcript(client)
 
     assert GENERATED_TEXT in body
     assert "Bienvenidos" not in body
@@ -101,10 +100,10 @@ def test_english_is_preferred_over_other_languages(
 def test_a_malformed_or_non_youtube_url_is_rejected_before_any_network_call(
     client: TestClient, youtube: FakeYouTubeSource, url: str
 ) -> None:
-    response = client.post("/fragments/episode", data={"youtube_url": url})
+    failure = sse.terminal(run_episode(client, url))
 
-    assert response.status_code == 200
-    assert "YouTube" in response.text
+    assert failure.data["kind"] == "invalid_url"
+    assert "YouTube" in failure.data["html"]
     assert youtube.calls == []
 
 
@@ -125,9 +124,7 @@ def test_a_malformed_or_non_youtube_url_is_rejected_before_any_network_call(
 def test_recognised_url_forms_all_resolve_to_the_same_episode(
     client: TestClient, youtube: FakeYouTubeSource, url: str
 ) -> None:
-    response = client.post("/fragments/episode", data={"youtube_url": url})
-
-    assert response.status_code == 200
+    assert sse.terminal(run_episode(client, url)).name == "done"
     assert ("list_tracks", "dQw4w9WgXcQ") in youtube.calls
 
 
@@ -137,7 +134,7 @@ def test_metadata_failure_falls_back_to_oembed_and_an_unknown_upload_date(
     """One flaky yt-dlp call must not cost the whole run."""
     youtube.metadata_error = RuntimeError("HTTP Error 403: Forbidden")
 
-    body = submit(client).text
+    body = transcript(client)
 
     assert MANUAL_TEXT in body
     assert "Week 1 Waiver Wire Targets" in body
@@ -153,7 +150,7 @@ def test_both_metadata_sources_failing_still_renders_the_transcript(
     youtube.metadata_error = RuntimeError("HTTP Error 403: Forbidden")
     youtube.oembed_error = RuntimeError("HTTP Error 404: Not Found")
 
-    body = submit(client).text
+    body = transcript(client)
 
     assert MANUAL_TEXT in body
     assert "Untitled episode" in body
@@ -165,11 +162,11 @@ def test_a_captions_failure_reports_a_failure_rather_than_a_stack_trace(
 ) -> None:
     youtube.captions_error = RuntimeError("Subtitles are disabled for this video")
 
-    response = submit(client)
+    failure = sse.terminal(run_episode(client))
 
-    assert response.status_code == 200
-    assert "Something went wrong" in response.text
-    assert "Subtitles are disabled" not in response.text
+    assert failure.name == "failed"
+    assert "Something went wrong" in failure.data["html"]
+    assert "Subtitles are disabled" not in failure.data["html"]
 
 
 def test_metadata_is_requested_for_a_canonical_watch_url(
@@ -179,7 +176,7 @@ def test_metadata_is_requested_for_a_canonical_watch_url(
     as a URL they accept."""
     youtube.metadata_error = RuntimeError("HTTP Error 403: Forbidden")
 
-    client.post("/fragments/episode", data={"youtube_url": " youtu.be/dQw4w9WgXcQ "})
+    run_episode(client, " youtu.be/dQw4w9WgXcQ ")
 
     assert ("fetch_metadata", EPISODE_URL) in youtube.calls
     assert ("fetch_oembed", EPISODE_URL) in youtube.calls

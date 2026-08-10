@@ -11,13 +11,17 @@
       </p>
     </div>
 
-    {# The same panel the run rendered when it was live: a reopened run is not
-       a lesser view of the episode. #}
+    {# The same panels the run rendered when it was live: a reopened run is
+       not a lesser view of the episode. #}
     <div class="mt-4">
       {% with episode = run %}
         {% include "fragments/episode.html" %}
       {% endwith %}
     </div>
+
+    {% with summary = run.summary %}
+      {% include "fragments/summary.html" %}
+    {% endwith %}
 
     <p class="mt-6 text-xs text-muted">
       Source:

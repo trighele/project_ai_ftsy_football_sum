@@ -8,6 +8,7 @@ bad URL before any network call is a requirement, not an implementation detail.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -98,5 +99,51 @@ class FakeNflverseSource:
     """Stand-in for the nflverse edge. Wired up by ticket 06."""
 
 
+#: A canned summary, in the pieces Claude would have written it in. It keeps
+#: the shape the prompt asks for so a test can tell a real summary from an
+#: empty one, and arrives in several chunks so streaming is observable.
+SUMMARY_CHUNKS = (
+    "# Week 1 Waiver Wire Targets\n\n_7 August 2026_\n\n## News Section\n\n",
+    "- **Player/Team**: Bijan Robinson (ATL, RB)\n"
+    "  - **News**: The Falcons are talking about a bigger role.\n"
+    "  - **Sentiment**: Positive\n\n",
+    "## Matchup Analysis\n\n- Atlanta's backfield is worth watching in Week 1.\n\n",
+    "## Player Debates\n\n- Robinson over a mid-tier WR1 in PPR.\n\n",
+    "## Waiver Wire Suggestions\n\n- Add the Falcons' pass-catching back.\n",
+)
+
+
 class FakeClaudeClient:
-    """Stand-in for the Claude client edge. Wired up by ticket 04."""
+    """Records the request it was handed and replays a canned streamed summary.
+
+    Recording the whole request, rather than checking a return value, is the
+    point of this fake: the player reference ticket asserts on every byte that
+    reached Claude, because a reference that is plausible and wrong produces a
+    summary that reads perfectly and is wrong.
+    """
+
+    def __init__(
+        self,
+        *,
+        chunks: tuple[str, ...] | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self.chunks = SUMMARY_CHUNKS if chunks is None else chunks
+        self.error = error
+        self.requests: list[Any] = []
+
+    @property
+    def request(self) -> Any:
+        """The most recent request. Raises if nothing was ever asked for."""
+        return self.requests[-1]
+
+    @property
+    def summary(self) -> str:
+        """The whole of what this fake streams back."""
+        return "".join(self.chunks)
+
+    def stream(self, request: Any) -> Iterator[str]:
+        self.requests.append(request)
+        if self.error is not None:
+            raise self.error
+        yield from self.chunks

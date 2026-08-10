@@ -27,9 +27,9 @@ from project_ai_ftsy_football_sum.services.transcripts import (
     upload_date_label,
 )
 
-#: Every column, created on startup when the table is not there. `summary` and
-#: `model` are filled by the summarizing ticket and `season` by the player
-#: reference ticket; they are declared here so neither needs a schema change.
+#: Every column, created on startup when the table is not there. `season` is
+#: filled by the player reference ticket; it is declared here so that ticket
+#: needs no schema change.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,8 +73,8 @@ class Run:
     """One end-to-end pass over an episode, as it is kept.
 
     A run carries everything needed to reopen it without going back to
-    YouTube. `summary` and `model` stay empty until the summarizing ticket
-    fills them, and `season` until the player reference ticket does.
+    YouTube or to Claude. `season` stays empty until the player reference
+    ticket fills it.
     """
 
     url: str
@@ -92,8 +92,15 @@ class Run:
     id: int | None = None
 
     @classmethod
-    def of(cls, episode: Episode, *, duration_seconds: float) -> Run:
-        """The run to save for an episode that has just been resolved."""
+    def of(
+        cls,
+        episode: Episode,
+        *,
+        duration_seconds: float,
+        summary: str | None = None,
+        model: str | None = None,
+    ) -> Run:
+        """The run to save for an episode that has just been summarized."""
         return cls(
             url=episode.url,
             video_id=episode.video_id,
@@ -101,6 +108,8 @@ class Run:
             title=episode.title,
             channel=episode.channel,
             upload_date=episode.upload_date,
+            summary=summary,
+            model=model,
             duration_seconds=duration_seconds,
         )
 

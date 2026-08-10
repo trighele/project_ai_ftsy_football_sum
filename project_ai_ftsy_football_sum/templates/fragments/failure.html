@@ -1,7 +1,10 @@
+{# How a run that could not finish is put to the reader. Ticket 09 gives each
+   failure kind its own wording and puts the underlying error behind a
+   disclosure toggle; the shape it lands in is here. #}
 <div
   class="rounded-lg border border-line bg-panel px-6 py-5"
   role="alert"
 >
-  <p class="heading text-xs text-accent">Nothing to summarize</p>
+  <p class="heading text-xs text-accent">Run stopped</p>
   <p class="mt-2 text-sm text-ink/90">{{ message }}</p>
 </div>
