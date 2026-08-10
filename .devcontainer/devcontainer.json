@@ -3,7 +3,7 @@
     "dockerComposeFile": "./docker-compose.local.yml",
     "service": "local-dev",
     "workspaceFolder": "/home/build/app",
-    "mounts": ["source=${localEnv:USERPROFILE}\\.claude,target=/home/build/.claude,type=bind"],
+    "mounts": ["source=${localEnv:USERPROFILE}\\.claude,target=/root/.claude,type=bind"],
     "customizations": {
         "vscode": {
             "extensions": [
@@ -17,7 +17,8 @@
     "forwardPorts": [7860],
     "remoteUser": "root",
     "remoteEnv": {
-        "UV_LINK_MODE": "copy"
+        "UV_LINK_MODE": "copy",
+        "IS_SANDBOX": "1"
     },
     "postCreateCommand": "bash .devcontainer/setup.sh"
 }
