@@ -96,3 +96,6 @@ $RECYCLE.BIN/
 # Notebooks
 notebooks/playground
 notebooks/*.csv
+
+# Downloaded build tools (Tailwind standalone CLI - see scripts/build-css.sh)
+.tools/

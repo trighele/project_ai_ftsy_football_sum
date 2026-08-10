@@ -1,0 +1,14 @@
+{% if unavailable_edges %}
+  <span
+    class="inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1"
+    title="Unavailable: {{ unavailable_edges | join(', ') }}"
+  >
+    <span class="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden="true"></span>
+    <span class="heading text-[0.65rem] text-muted">Not ready</span>
+  </span>
+{% else %}
+  <span class="inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1">
+    <span class="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true"></span>
+    <span class="heading text-[0.65rem] text-accent">Ready</span>
+  </span>
+{% endif %}

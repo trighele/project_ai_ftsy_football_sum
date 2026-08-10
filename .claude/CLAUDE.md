@@ -21,7 +21,29 @@ poetry run python project_ai_ftsy_football_sum/main.py
 docker-compose up --build
 ```
 
-There is no test suite, linter config, or CI check wired into this repo (`ruff` appears only as a transitive pin in `requirements.txt`, not a configured tool). The GitHub Actions workflow (`.github/workflows/deployment.yml`) is `workflow_dispatch`-only (manual) and deploys to a self-hosted k8s cluster — it is not a PR/CI gate.
+### The 2026 rebuild app (in progress)
+
+A FastAPI app is being built alongside the Gradio one, in the same `project_ai_ftsy_football_sum/` package (`app.py`, `container.py`, `templates/`, `static/`, `assets/`). It does not replace `main.py` until the cutover ticket; both live in the tree meanwhile. The spec and its tickets are in `.scratch/2026-rebuild/`. Dependencies are managed with **uv**, not Poetry.
+
+```bash
+# install deps (including the dev group)
+uv sync
+
+# run the new app
+uv run uvicorn project_ai_ftsy_football_sum.app:app --reload --port 8000
+
+# run the test suite
+uv run pytest
+
+# recompile the Tailwind stylesheet after editing templates or assets/tailwind.css
+./scripts/build-css.sh
+```
+
+`project_ai_ftsy_football_sum/static/css/app.css` is **generated** — edit `assets/tailwind.css` and rebuild. It is committed deliberately so neither the Docker image nor a plain `uv run` needs Node; `scripts/build-css.sh` downloads the Tailwind standalone CLI into the gitignored `.tools/`. `static/js/htmx.min.js` (official dist) and `static/fonts/oswald-latin-var.woff2` (SIL OFL, licence alongside it) are vendored for the same reason. There are no CDN references anywhere in the templates or the stylesheet.
+
+The three network edges (captions, nflverse, Claude) resolve through `container.py` and nothing else. Tests drive the app through `TestClient` with fakes registered on the container; an autouse fixture in `tests/conftest.py` blocks sockets, so a test that reaches the network fails rather than hangs.
+
+There is no linter config or CI check wired into this repo (`ruff` appears only as a transitive pin in `requirements.txt`, not a configured tool), and the Gradio app has no tests. The GitHub Actions workflow (`.github/workflows/deployment.yml`) is `workflow_dispatch`-only (manual) and deploys to a self-hosted k8s cluster — it is not a PR/CI gate.
 
 ### Working directory note
 
