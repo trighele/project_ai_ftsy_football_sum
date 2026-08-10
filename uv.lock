@@ -740,7 +740,7 @@ wheels = [
 [[package]]
 name = "project-ai-ftsy-football-sum"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },

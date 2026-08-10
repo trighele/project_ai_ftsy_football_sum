@@ -29,8 +29,8 @@ A FastAPI app is being built alongside the Gradio one, in the same `project_ai_f
 # install deps (including the dev group)
 uv sync
 
-# run the new app
-uv run uvicorn project_ai_ftsy_football_sum.app:app --reload --port 8000
+# run the new app (console script; --host/--port/--reload, or HOST/PORT env vars)
+uv run ffsum --reload
 
 # run the test suite
 uv run pytest
