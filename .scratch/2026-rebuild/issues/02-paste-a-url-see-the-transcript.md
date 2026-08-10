@@ -12,11 +12,11 @@ Error handling in this ticket can be minimal — a generic failure message is ac
 
 **Status:** ready-for-agent
 
-- [ ] Submitting a valid YouTube URL renders the transcript on the page.
-- [ ] The episode title and upload date render alongside the transcript.
-- [ ] An uploaded caption track is chosen in preference to an auto-generated one when both exist.
-- [ ] Caption segments are joined into one continuous transcript with no timestamps.
-- [ ] Metadata retrieval performs no audio download and runs no post-processors.
-- [ ] When metadata retrieval fails but captions succeed, the run still completes with a fallback title and the upload date shown as unknown.
-- [ ] A malformed or non-YouTube URL is rejected before any network call is attempted.
-- [ ] Tests drive the real route through the test client with a fixture caption payload and a fixture metadata response, and make no network calls.
+- [x] Submitting a valid YouTube URL renders the transcript on the page.
+- [x] The episode title and upload date render alongside the transcript.
+- [x] An uploaded caption track is chosen in preference to an auto-generated one when both exist.
+- [x] Caption segments are joined into one continuous transcript with no timestamps.
+- [x] Metadata retrieval performs no audio download and runs no post-processors.
+- [x] When metadata retrieval fails but captions succeed, the run still completes with a fallback title and the upload date shown as unknown.
+- [x] A malformed or non-YouTube URL is rejected before any network call is attempted.
+- [x] Tests drive the real route through the test client with a fixture caption payload and a fixture metadata response, and make no network calls.
