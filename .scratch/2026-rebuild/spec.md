@@ -137,7 +137,7 @@ Underneath: captions replace Whisper, nflverse replaces Postgres, and depth rank
 
 ### Page data strategy
 
-- The Players page ships the full player reference to the browser as JSON and does all filtering and sorting client-side. Roughly 2,800 rows; instant interaction is worth the payload.
+- The Players page ships the full player reference to the browser and does all filtering and sorting client-side. Roughly 2,800 rows; instant interaction is worth the payload. It ships as the rendered table, each row carrying its own values as `data-*` attributes, rather than as the JSON this said originally — see ADR-0003.
 - The player reference handed to Claude is a deliberately narrower slice: fantasy-relevant positions at depth rank 3 or better, plus ECR tier and ECR rank. Approximately 700 rows.
 
 ### Claude integration
@@ -218,7 +218,7 @@ None — this repo has no test suite, no linter configuration, and no CI check. 
 ## Further Notes
 
 - `CONTEXT.md` at the repo root holds the vocabulary this spec uses. Where this spec says depth rank, ECR tier, player reference, run, transcript, captions, sync, or season, it means what that file says.
-- Two ADRs cover the irreversible parts: `docs/adr/0001-youtube-captions-over-whisper-transcription.md` and `docs/adr/0002-nflreadpy-instead-of-postgres-player-pipeline.md`. Neither the FastAPI choice nor the SQLite choice warranted one; both are ordinary and cheaply reversed.
+- Three ADRs cover the irreversible parts: `docs/adr/0001-youtube-captions-over-whisper-transcription.md`, `docs/adr/0002-nflreadpy-instead-of-postgres-player-pipeline.md`, and `docs/adr/0003-the-players-table-is-html-the-browser-filters-in-place.md`. Neither the FastAPI choice nor the SQLite choice warranted one; both are ordinary and cheaply reversed.
 - The dependency set resolves cleanly on Python 3.14 for linux — verified by dry-run resolution, including `nflreadpy` and its Polars runtime. Polars' PyPI classifiers stop at 3.13, which is a documentation lag rather than an incompatibility.
 - `youtube-transcript-api` v1.x replaced the old static `get_transcript` call with an instance-based API. Code or documentation recalling the older shape is out of date.
 - `yt-dlp` is now the only component that talks to YouTube's main site and therefore the only one exposed to bot detection. Its blast radius is deliberately limited to title and upload date, and the oEmbed fallback keeps a run alive when it fails. `--cookies-from-browser` remains the escape hatch if it becomes a recurring problem.

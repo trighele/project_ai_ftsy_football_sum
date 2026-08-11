@@ -160,7 +160,7 @@ def test_a_depth_rank_cutoff_is_offered(client: TestClient) -> None:
     strip = controls(page(client))
 
     assert "data-player-depth" in strip
-    for cutoff in ("1", "2", "3"):
+    for cutoff in ("1", "2", "3", "4"):
         assert f'value="{cutoff}"' in strip
 
 

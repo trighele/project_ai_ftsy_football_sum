@@ -10,10 +10,12 @@
 (() => {
   "use strict";
 
-  // The order the server sent the rows in, per table, so that "Clear" can put
-  // them back and every sort breaks its ties the same way.
+  // The order the server sent the rows in, so that "Clear" can put them back
+  // and every sort breaks its ties the same way. Held against the table
+  // element rather than in a variable so that the table **Sync now** swaps in —
+  // a different element, with different rows — starts with neither.
   const originalOrder = new WeakMap();
-  // Which column each table is currently sorted by, and which way.
+  // Which column the table is currently sorted by, and which way.
   const sortState = new WeakMap();
 
   // `input` covers all three controls — a checkbox and a select both fire it —
@@ -47,8 +49,11 @@
     return originalOrder.get(element);
   }
 
-  function control(selector) {
-    return document.querySelector(selector);
+  // The row is the record: every value a control reads is an attribute the
+  // server wrote on the `<tr>`, under the same key the column heading names.
+  // `null` means the reference has no such value for that player.
+  function value(row, key) {
+    return row.getAttribute(`data-${key}`);
   }
 
   function checkedValues(facet) {
@@ -64,34 +69,34 @@
     const element = table();
     if (!element) return;
 
-    const search = control("[data-player-search]");
-    const depthControl = control("[data-player-depth]");
-    const query = search ? search.value.trim().toLowerCase() : "";
-    const teams = checkedValues("team");
-    const positions = checkedValues("position");
-    const depth = depthControl ? Number(depthControl.value) : 0;
+    const search = document.querySelector("[data-player-search]");
+    const cutoff = document.querySelector("[data-player-depth]");
+    const narrowing = {
+      query: search.value.trim().toLowerCase(),
+      teams: checkedValues("team"),
+      positions: checkedValues("position"),
+      depth: Number(cutoff.value),
+    };
 
     let shown = 0;
     for (const row of rows(element)) {
-      const visible = matches(row, { query, teams, positions, depth });
+      const visible = matches(row, narrowing);
       row.hidden = !visible;
       if (visible) shown += 1;
     }
 
-    const count = control("[data-player-shown]");
-    if (count) count.textContent = String(shown);
-    const empty = element.querySelector("[data-player-empty]");
-    if (empty) empty.hidden = shown > 0;
+    document.querySelector("[data-player-shown]").textContent = String(shown);
+    element.querySelector("[data-player-empty]").hidden = shown > 0;
   }
 
   function matches(row, { query, teams, positions, depth }) {
-    const depthRank = Number(row.getAttribute("data-depth-rank"));
+    const depthRank = value(row, "depth-rank");
     return (
-      (!query || row.dataset.playerName.includes(query)) &&
-      (!teams.size || teams.has(row.getAttribute("data-team"))) &&
-      (!positions.size || positions.has(row.getAttribute("data-position"))) &&
+      (!query || value(row, "player-name").includes(query)) &&
+      (!teams.size || teams.has(value(row, "team"))) &&
+      (!positions.size || positions.has(value(row, "position"))) &&
       // A player with no depth rank is below any cutoff, not above every one.
-      (!depth || (row.hasAttribute("data-depth-rank") && depthRank <= depth))
+      (!depth || (depthRank !== null && Number(depthRank) <= depth))
     );
   }
 
@@ -109,7 +114,7 @@
     sortState.set(element, { column, descending });
 
     const ordered = asServed(element).slice();
-    ordered.sort(comparing(`data-${column}`, numeric, descending));
+    ordered.sort(comparing(column, numeric, descending));
     reorder(element, ordered);
 
     unmarkSorting(element);
@@ -136,10 +141,10 @@
     }
   }
 
-  function comparing(attribute, numeric, descending) {
+  function comparing(key, numeric, descending) {
     return (left, right) => {
-      const first = left.getAttribute(attribute);
-      const second = right.getAttribute(attribute);
+      const first = value(left, key);
+      const second = value(right, key);
       // A missing value goes last whichever way the column is sorted: it is
       // not a low rank, it is the absence of one.
       if (first === null || second === null) {
@@ -158,10 +163,8 @@
     const element = table();
     if (!element) return;
 
-    const search = control("[data-player-search]");
-    if (search) search.value = "";
-    const depth = control("[data-player-depth]");
-    if (depth) depth.value = "";
+    document.querySelector("[data-player-search]").value = "";
+    document.querySelector("[data-player-depth]").value = "";
     for (const box of document.querySelectorAll("[data-player-filter]")) {
       box.checked = false;
     }

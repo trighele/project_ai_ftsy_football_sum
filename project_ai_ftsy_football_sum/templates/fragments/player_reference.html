@@ -82,6 +82,7 @@
             <option value="1">Starters only</option>
             <option value="2">2 or better</option>
             <option value="3">3 or better</option>
+            <option value="4">4 or better</option>
           </select>
         </label>
 
@@ -127,7 +128,7 @@
             <tr
               data-player-row
               data-player-name="{{ row.player_name | lower }}"
-              data-team="{{ row.team }}"
+              {% if row.team %}data-team="{{ row.team }}"{% endif %}
               {% if row.position %}data-position="{{ row.position }}"{% endif %}
               {% if row.depth_rank is not none %}data-depth-rank="{{ row.depth_rank }}"{% endif %}
               {% if row.ecr_tier is not none %}data-ecr-tier="{{ row.ecr_tier }}"{% endif %}
