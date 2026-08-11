@@ -12,6 +12,7 @@ import re
 from fastapi.testclient import TestClient
 
 from project_ai_ftsy_football_sum.app import RECENT_RUN_LIMIT
+from project_ai_ftsy_football_sum.services.players import calendar_season
 from tests.events import EPISODE_URL, run_episode, run_titled
 from tests.fakes import FakeYouTubeSource
 
@@ -180,6 +181,9 @@ def test_the_downloaded_markdown_stands_on_its_own(client: TestClient) -> None:
     assert "Fantasy Fallout" in document
     assert EPISODE_URL in document
     assert SUMMARY_LINE in document
+    # Which season's players it was summarized against travels with the file:
+    # nothing else out here says so.
+    assert f"{calendar_season()} season" in document
 
 
 def test_a_download_says_the_upload_date_is_unknown_rather_than_omitting_it(

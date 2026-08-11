@@ -239,7 +239,9 @@ def perform(
     try:
         episode = _resolve_episode(url, container, publish)
         reference = _load_players(container, players, publish)
-        summary, model_used = _write_summary(episode, container, model, publish)
+        summary, model_used = _write_summary(
+            episode, reference, container, model, publish
+        )
     except RunFailed as failure:
         publish(_failure_event(failure))
         return
@@ -315,11 +317,15 @@ def _resolve_episode(url: str, container: Container, publish: Publish) -> Episod
 
 
 def _write_summary(
-    episode: Episode, container: Container, model: str, publish: Publish
+    episode: Episode,
+    reference: PlayerReference,
+    container: Container,
+    model: str,
+    publish: Publish,
 ) -> tuple[str, str]:
     """Stream the summary out of Claude, publishing it as it is written."""
     claude: SummaryClient = _edge(container, "claude", kind="claude")
-    request = summary_request(episode, model=model)
+    request = summary_request(episode, reference, model=model)
     publish(_stage_event("summarizing"))
 
     written: list[str] = []

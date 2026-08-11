@@ -70,6 +70,36 @@
     "pos_rank": 3
   },
   {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Ray-Ray McCloud",
+    "gsis_id": "00-0034761",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "WR",
+    "pos_slot": 3,
+    "pos_rank": 4
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Kaden Elliss",
+    "gsis_id": "00-0035260",
+    "pos_grp": "Base 3-4",
+    "pos_abb": "LB",
+    "pos_slot": 5,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Bradley Pinion",
+    "gsis_id": "00-0032085",
+    "pos_grp": "Special Teams",
+    "pos_abb": "P",
+    "pos_slot": 2,
+    "pos_rank": 1
+  },
+  {
     "dt": "2026-08-01T07:32:09Z",
     "team": "ATL",
     "player_name": "Preseason Placeholder",

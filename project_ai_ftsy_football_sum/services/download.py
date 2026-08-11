@@ -27,6 +27,11 @@ def markdown_document(run: Run) -> str:
     if run.channel:
         facts.insert(0, f"- **Channel:** {run.channel}")
     facts.append(f"- **Summarized:** {run.created_at_label}")
+    # Which season's players it was written against is part of what it says: in
+    # the preseason that is last autumn's depth charts, and the file is read
+    # somewhere the app's own warnings cannot follow it.
+    if run.season:
+        facts.append(f"- **Player reference:** {run.season} season")
     facts.append(f"- **Source:** {run.url}")
 
     summary = (run.summary or "").strip()

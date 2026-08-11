@@ -161,7 +161,9 @@ def test_the_fake_records_the_whole_request_claude_received(
 
     request = claude.request
     assert request.model == DEFAULT_MODEL
-    assert len(request.system) == 1
+    # The instructions and the player reference. What is in the second of them
+    # is `test_player_reference_prompt.py`'s subject, not this file's.
+    assert len(request.system) == 2
     assert TRANSCRIPT_OPENING in request.user
 
 

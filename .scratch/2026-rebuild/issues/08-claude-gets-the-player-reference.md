@@ -14,14 +14,14 @@ Also: record on each run which season's player reference it used, and show it on
 
 **Blocked by:** 04 and 06.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The system prompt contains the narrowed player reference as a table.
-- [ ] Depth rank and ECR tier appear as separate labelled columns, and the prompt explains what each means and that they are independent.
-- [ ] Only fantasy-relevant positions at depth rank 3 or better are included.
-- [ ] The reference block carries `cache_control`.
-- [ ] Two consecutive runs produce a byte-identical reference block — asserted by a test, not by inspection.
-- [ ] The transcript, title, and upload date sit in the user turn, after the cached prefix.
-- [ ] The season used is saved on the run record and shown on the run detail view.
-- [ ] A test asserts the exact reference the fake Claude client received: expected columns present, players below the depth cutoff absent.
-- [ ] A test asserts that when the resolved season is behind the calendar season, the run uses and records the resolved season rather than silently using nothing.
+- [x] The system prompt contains the narrowed player reference as a table.
+- [x] Depth rank and ECR tier appear as separate labelled columns, and the prompt explains what each means and that they are independent.
+- [x] Only fantasy-relevant positions at depth rank 3 or better are included.
+- [x] The reference block carries `cache_control`.
+- [x] Two consecutive runs produce a byte-identical reference block — asserted by a test, not by inspection.
+- [x] The transcript, title, and upload date sit in the user turn, after the cached prefix.
+- [x] The season used is saved on the run record and shown on the run detail view.
+- [x] A test asserts the exact reference the fake Claude client received: expected columns present, players below the depth cutoff absent.
+- [x] A test asserts that when the resolved season is behind the calendar season, the run uses and records the resolved season rather than silently using nothing.

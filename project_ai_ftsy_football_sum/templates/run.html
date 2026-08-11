@@ -8,6 +8,14 @@
     <div class="flex flex-wrap items-baseline justify-between gap-3">
       <a href="/" class="heading text-xs text-muted hover:text-accent">&larr; Back</a>
       <div class="flex items-baseline gap-3">
+        {# Which season's players this was written against is part of what the
+           summary means: in the preseason it is last autumn's depth charts. #}
+        {% if run.season %}
+          <p class="heading text-[0.65rem] tabular-nums text-muted/70">
+            {{ run.season }} player reference
+          </p>
+          <span class="text-muted/40">&middot;</span>
+        {% endif %}
         <p class="heading text-[0.65rem] tabular-nums text-muted/70">
           Summarized {{ run.created_at_label }}
         </p>
