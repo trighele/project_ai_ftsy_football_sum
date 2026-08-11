@@ -64,8 +64,24 @@ _COLUMNS = (
 )
 
 
+#: How every list of runs is ordered. Recency is what a reader scans by, and
+#: the identifier breaks ties between runs saved within the same second.
+_NEWEST_FIRST = "ORDER BY created_at DESC, id DESC"
+
+
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def _escape_like(term: str) -> str:
+    """Make a search term mean itself inside a `LIKE` pattern.
+
+    A title can contain `%` — "100% Start Em Sit Em" — and a reader typing it
+    means those characters, not SQL's wildcards.
+    """
+    for character in ("\\", "%", "_"):
+        term = term.replace(character, f"\\{character}")
+    return term
 
 
 @dataclass(frozen=True)
@@ -164,18 +180,47 @@ class RunStore:
         """The most recently created runs, newest first."""
         with self._connect() as connection:
             rows = connection.execute(
-                "SELECT * FROM runs ORDER BY created_at DESC, id DESC LIMIT ?",
+                f"SELECT * FROM runs {_NEWEST_FIRST} LIMIT ?",
                 (limit,),
             ).fetchall()
         return [_run_from_row(row) for row in rows]
 
+    def search(self, query: str = "") -> list[Run]:
+        """Every saved run whose title contains `query`, newest first.
+
+        An empty query is not a filter, so the History page and its search box
+        are the same read. Matching is on the title alone: it is what the
+        reader remembers about an episode, and searching the transcript would
+        turn a name-drop into a hit.
+        """
+        term = query.strip()
+        if not term:
+            return self._select("")
+        return self._select(
+            "WHERE title LIKE ? ESCAPE '\\'", (f"%{_escape_like(term)}%",)
+        )
+
     def get(self, run_id: int) -> Run | None:
         """One saved run, or `None` when nothing has that identifier."""
+        rows = self._select("WHERE id = ?", (run_id,))
+        return rows[0] if rows else None
+
+    def delete(self, run_id: int) -> bool:
+        """Forget a run entirely. `False` when there was nothing to forget.
+
+        A real deletion, not a hidden flag: a run deleted because it was junk
+        should not come back in anything that reads the table later.
+        """
         with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM runs WHERE id = ?", (run_id,)
-            ).fetchone()
-        return _run_from_row(row) if row is not None else None
+            cursor = connection.execute("DELETE FROM runs WHERE id = ?", (run_id,))
+            return cursor.rowcount > 0
+
+    def _select(self, where: str, parameters: tuple[Any, ...] = ()) -> list[Run]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"SELECT * FROM runs {where} {_NEWEST_FIRST}", parameters
+            ).fetchall()
+        return [_run_from_row(row) for row in rows]
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:

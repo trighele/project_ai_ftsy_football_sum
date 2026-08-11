@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 
 {% block title %}{{ run.title }} &middot; Fantasy Football Podcast Summarizer{% endblock %}
 
@@ -6,9 +7,12 @@
   <section class="mx-auto max-w-3xl">
     <div class="flex flex-wrap items-baseline justify-between gap-3">
       <a href="/" class="heading text-xs text-muted hover:text-accent">&larr; Back</a>
-      <p class="heading text-[0.65rem] tabular-nums text-muted/70">
-        Summarized {{ run.created_at_label }}
-      </p>
+      <div class="flex items-baseline gap-3">
+        <p class="heading text-[0.65rem] tabular-nums text-muted/70">
+          Summarized {{ run.created_at_label }}
+        </p>
+        {{ macros.download_link(run) }}
+      </div>
     </div>
 
     {# The same panels the run rendered when it was live: a reopened run is

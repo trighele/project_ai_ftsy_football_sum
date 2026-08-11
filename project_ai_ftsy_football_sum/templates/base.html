@@ -19,7 +19,7 @@
           {% set nav_items = [
             ('home', 'Home', '/', true),
             ('players', 'Players', none, false),
-            ('history', 'History', none, false),
+            ('history', 'History', '/history', true),
           ] %}
           {% for key, label, href, available in nav_items %}
             {% if available %}

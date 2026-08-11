@@ -13,19 +13,23 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Form, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from project_ai_ftsy_football_sum.config import claude_model, database_path
 from project_ai_ftsy_football_sum.container import EDGES, Container, get_container
+from project_ai_ftsy_football_sum.services.download import (
+    download_filename,
+    markdown_document,
+)
 from project_ai_ftsy_football_sum.services.runs import (
     Event,
     LiveRuns,
     lost_event,
     perform,
 )
-from project_ai_ftsy_football_sum.services.store import RunStore
+from project_ai_ftsy_football_sum.services.store import Run, RunStore
 from project_ai_ftsy_football_sum.templating import templates
 
 PACKAGE_ROOT = Path(__file__).parent
@@ -54,6 +58,23 @@ def _unavailable_edges(container: Container) -> list[str]:
 def get_store(request: Request) -> RunStore:
     """The run store for the running app. Usable as a FastAPI dependency."""
     return request.app.state.store
+
+
+def _saved_run(request: Request, run_id: int) -> Run:
+    """The run with that identifier, or a 404 for the reader who asked."""
+    run = get_store(request).get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="No such run.")
+    return run
+
+
+def _history_list_response(request: Request, query: str) -> HTMLResponse:
+    """The history list rendered on its own — after a search, or a delete."""
+    return templates.TemplateResponse(
+        request,
+        "fragments/history_list.html",
+        {"query": query, "runs": get_store(request).search(query)},
+    )
 
 
 @asynccontextmanager
@@ -89,13 +110,58 @@ def create_app(
             },
         )
 
+    @app.get("/history", response_class=HTMLResponse)
+    def history(request: Request, q: str = Query(default="")) -> HTMLResponse:
+        """Every saved run, newest first, narrowed by the search term."""
+        return templates.TemplateResponse(
+            request,
+            "history.html",
+            {
+                "nav_active": "history",
+                "query": q,
+                "runs": get_store(request).search(q),
+            },
+        )
+
+    @app.get("/fragments/history", response_class=HTMLResponse)
+    def history_fragment(request: Request, q: str = Query(default="")) -> HTMLResponse:
+        """The list on its own, so the search box filters without a reload."""
+        return _history_list_response(request, q)
+
     @app.get("/runs/{run_id}", response_class=HTMLResponse)
     def run_detail(request: Request, run_id: int) -> HTMLResponse:
         """Reopen a saved run: the episode it was, and what we made of it."""
-        run = get_store(request).get(run_id)
-        if run is None:
+        return templates.TemplateResponse(
+            request, "run.html", {"run": _saved_run(request, run_id)}
+        )
+
+    @app.get("/runs/{run_id}/download", response_class=PlainTextResponse)
+    def run_download(request: Request, run_id: int) -> PlainTextResponse:
+        """The run as a Markdown file, named after the episode."""
+        run = _saved_run(request, run_id)
+        return PlainTextResponse(
+            markdown_document(run),
+            media_type="text/markdown; charset=utf-8",
+            headers={
+                "content-disposition": (
+                    f'attachment; filename="{download_filename(run)}"'
+                )
+            },
+        )
+
+    @app.delete("/runs/{run_id}", response_class=HTMLResponse)
+    def run_delete(
+        request: Request, run_id: int, q: str = Query(default="")
+    ) -> HTMLResponse:
+        """Delete a run and hand back the list it has just left.
+
+        No confirmation step: the reader deleting a junk run should not have to
+        say so twice. The search term comes along so that deleting a result
+        returns the rest of that search rather than the whole history.
+        """
+        if not get_store(request).delete(run_id):
             raise HTTPException(status_code=404, detail="No such run.")
-        return templates.TemplateResponse(request, "run.html", {"run": run})
+        return _history_list_response(request, q)
 
     @app.post("/runs", response_class=HTMLResponse)
     async def start_run(

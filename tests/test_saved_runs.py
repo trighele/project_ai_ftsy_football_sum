@@ -23,17 +23,11 @@ from project_ai_ftsy_football_sum.config import (
 )
 from project_ai_ftsy_football_sum.container import Container
 from project_ai_ftsy_football_sum.services.store import RunStore
-from tests.events import EPISODE_URL, run_episode
-from tests.fakes import FakeClaudeClient, FakeYouTubeSource, fixture
+from tests.events import EPISODE_URL, run_episode, run_titled
+from tests.fakes import FakeClaudeClient, FakeYouTubeSource
 
 EPISODE_TITLE = "Week 1 Waiver Wire Targets"
 TRANSCRIPT_OPENING = "Welcome back to the Fantasy Fallout podcast."
-
-
-def submit_titled(client: TestClient, youtube: FakeYouTubeSource, title: str) -> None:
-    """Run one episode that can be told apart from the others by its title."""
-    youtube.metadata = {**fixture("metadata"), "title": title}
-    run_episode(client)
 
 
 def run_links(body: str) -> list[str]:
@@ -71,7 +65,7 @@ def test_the_home_page_lists_the_five_most_recent_runs(
     client: TestClient, youtube: FakeYouTubeSource
 ) -> None:
     for number in range(1, 8):
-        submit_titled(client, youtube, f"Episode {number}")
+        run_titled(client, youtube, f"Episode {number}")
 
     body = client.get("/").text
 
@@ -86,7 +80,7 @@ def test_the_most_recent_run_is_listed_first(
     client: TestClient, youtube: FakeYouTubeSource
 ) -> None:
     for number in (1, 2, 3):
-        submit_titled(client, youtube, f"Episode {number}")
+        run_titled(client, youtube, f"Episode {number}")
 
     body = client.get("/").text
 

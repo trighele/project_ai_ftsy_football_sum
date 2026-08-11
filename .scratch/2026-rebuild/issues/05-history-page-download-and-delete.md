@@ -10,11 +10,11 @@ Delete is a real deletion of the run record, and should not require a confirmati
 
 **Status:** ready-for-agent
 
-- [ ] A History page lists all saved runs, most recent first.
-- [ ] Each row shows episode title, channel, upload date, and when the run was summarized.
-- [ ] Searching by title narrows the list.
-- [ ] Opening a run from History shows its transcript and summary.
-- [ ] A run's summary downloads as a Markdown file that includes the episode title and upload date.
-- [ ] A run can be deleted, and disappears from both History and the home page's recent list.
-- [ ] Navigation between Home, Players, and History works from every page.
-- [ ] Tests cover listing, search, reopen, download content, and delete.
+- [x] A History page lists all saved runs, most recent first.
+- [x] Each row shows episode title, channel, upload date, and when the run was summarized.
+- [x] Searching by title narrows the list.
+- [x] Opening a run from History shows its transcript and summary.
+- [x] A run's summary downloads as a Markdown file that includes the episode title and upload date.
+- [x] A run can be deleted, and disappears from both History and the home page's recent list.
+- [x] Navigation between Home, Players, and History works from every page.
+- [x] Tests cover listing, search, reopen, download content, and delete.

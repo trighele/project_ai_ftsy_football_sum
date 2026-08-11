@@ -14,6 +14,8 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from tests.fakes import FakeYouTubeSource, fixture
+
 EPISODE_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
 #: Where the panel the server hands back says its events will arrive.
@@ -48,6 +50,12 @@ def follow(client: TestClient, events_url: str) -> list[Event]:
 def run_episode(client: TestClient, url: str = EPISODE_URL) -> list[Event]:
     """Start a run and wait for it to finish."""
     return follow(client, start(client, url))
+
+
+def run_titled(client: TestClient, youtube: FakeYouTubeSource, title: str) -> None:
+    """Run one episode that can be told apart from the others by its title."""
+    youtube.metadata = {**fixture("metadata"), "title": title}
+    run_episode(client)
 
 
 def decode(payload: str) -> list[Event]:

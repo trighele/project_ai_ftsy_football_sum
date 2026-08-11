@@ -1,0 +1,29 @@
+{# Markup that appears in more than one list of runs.
+
+   The home page's recent five and the History page's everything are two views
+   of the same thing, so a run identifies itself the same way in both, and both
+   say the same thing when there is nothing to show. #}
+
+{# What an episode was: its title, and who published it when. #}
+{% macro episode_line(run) %}
+  <span class="block truncate text-sm text-ink">{{ run.title }}</span>
+  <span class="mt-1 block truncate text-xs text-muted">
+    {{ run.channel or "Channel unknown" }} &middot; {{ run.upload_date_label }}
+  </span>
+{% endmacro %}
+
+{# The run as a Markdown file. Offered from the History list and from the run
+   itself, so it looks and reads the same in both. #}
+{% macro download_link(run) %}
+  <a
+    href="/runs/{{ run.id }}/download"
+    class="heading rounded px-2 py-1 text-[0.65rem] text-muted hover:bg-accent/15 hover:text-accent"
+    title="Download this summary as Markdown"
+  >Download</a>
+{% endmacro %}
+
+{% macro no_runs_yet() %}
+  <p class="rounded-lg border border-dashed border-line px-6 py-8 text-center text-sm text-muted/70">
+    No runs yet. Summarize an episode and it is saved here automatically.
+  </p>
+{% endmacro %}

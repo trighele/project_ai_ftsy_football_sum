@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}History &middot; Fantasy Football Podcast Summarizer{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-3xl">
+    <h1 class="heading text-4xl leading-none text-ink sm:text-5xl">
+      Every <span class="text-accent">summary</span> so far
+    </h1>
+    <p class="mt-4 max-w-xl text-sm text-muted">
+      Open a run to read its transcript and summary again, download it as
+      Markdown, or delete it.
+    </p>
+
+    {# A real form, so searching works without JavaScript; HTMX swaps the list
+       in as the box is typed into when it is available. #}
+    <form class="mt-8" action="/history" method="get" role="search">
+      <label class="sr-only" for="q">Search by episode title</label>
+      {# The HTMX attributes sit on the input rather than the form: the input
+         is what carries the term, so htmx sends it without being told to, and
+         `changed` compares the value a reader is actually typing. #}
+      <input
+        id="q"
+        name="q"
+        type="search"
+        autocomplete="off"
+        value="{{ query }}"
+        placeholder="Search titles&hellip;"
+        hx-get="/fragments/history"
+        hx-trigger="input changed delay:250ms, search"
+        hx-target="#history-list"
+        hx-swap="outerHTML"
+        class="w-full rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
+      />
+      <noscript>
+        <button
+          type="submit"
+          class="heading mt-3 rounded-md bg-accent px-6 py-2 text-sm text-accent-ink hover:bg-accent-bright"
+        >
+          Search
+        </button>
+      </noscript>
+    </form>
+
+    {% include "fragments/history_list.html" %}
+  </section>
+{% endblock %}
