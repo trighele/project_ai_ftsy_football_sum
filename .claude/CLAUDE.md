@@ -32,6 +32,9 @@ uv sync
 # run the new app (console script; --host/--port/--reload, or HOST/PORT env vars)
 uv run ffsum --reload
 
+# run it against a real Claude — the app never loads .env itself, so uv does it
+uv run --env-file .env ffsum --reload
+
 # run the test suite
 uv run pytest
 
@@ -70,6 +73,8 @@ Read by the 2026 rebuild app, and **not** loaded from `.env` — that app never 
 - `FFSUM_DATA_DIR` — optional. Directory holding the SQLite database of saved runs. Defaults to `./data`. Set it to the mounted volume path in a deployment.
 - `ANTHROPIC_API_KEY` — required for a run to get past the transcript. Without it the readiness pill reads "Not ready".
 - `CLAUDE_MODEL` — optional. Defaults to `claude-sonnet-5`. Same variable the Gradio app uses, so an existing deployment's value still applies.
+
+Both are already in the repo-root `.env` for the Gradio app. To exercise the new app against a real Claude locally, hand that file to uv rather than to the app: `uv run --env-file .env ffsum --reload`. The readiness pill still reads "Not ready" while `nflverse` is unwired, which does not stop a run.
 
 ## Architecture
 
