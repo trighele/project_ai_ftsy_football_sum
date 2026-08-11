@@ -37,6 +37,54 @@
   </button>
 {% endmacro %}
 
+{# One multi-select filter on the player reference, as a row of toggles.
+
+   Checkboxes rather than a `<select multiple>`: picking three teams should not
+   require holding a modifier key down, and every value is two or three
+   characters wide, so they all fit on show. The input is the state — the
+   script reads it and nothing has to be kept in step with it. #}
+{% macro filter_facet(facet, label, values) %}
+  <fieldset>
+    <legend class="heading text-[0.65rem] text-muted">{{ label }}</legend>
+    <div class="mt-2 flex flex-wrap gap-1">
+      {% for value in values %}
+        <label class="cursor-pointer">
+          <input
+            type="checkbox"
+            data-player-filter="{{ facet }}"
+            value="{{ value }}"
+            class="peer sr-only"
+          />
+          <span
+            class="heading block rounded border border-line px-2 py-1 text-[0.65rem] text-muted hover:border-muted/60 hover:text-ink peer-checked:border-accent peer-checked:bg-accent/15 peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+          >{{ value }}</span>
+        </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+{% endmacro %}
+
+{# A column heading that sorts the table by itself. `data-player-sort` names the
+   row attribute to read, so the heading and the row carry the same key and the
+   script needs no table of its own. #}
+{% macro sortable_column(key, label, numeric=false, hint="") %}
+  <th
+    scope="col"
+    aria-sort="none"
+    class="px-4 py-3 font-normal"
+    {% if hint %}title="{{ hint }}"{% endif %}
+  >
+    <button
+      type="button"
+      data-player-sort="{{ key }}"
+      {% if numeric %}data-player-sort-numeric{% endif %}
+      class="heading flex items-center gap-1 text-[0.65rem] text-muted hover:text-ink focus-visible:text-accent focus-visible:outline-none"
+    >
+      {{ label }}<span data-player-arrow aria-hidden="true" class="text-muted/40">&#8597;</span>
+    </button>
+  </th>
+{% endmacro %}
+
 {% macro no_runs_yet() %}
   <p class="rounded-lg border border-dashed border-line px-6 py-8 text-center text-sm text-muted/70">
     No runs yet. Summarize an episode and it is saved here automatically.

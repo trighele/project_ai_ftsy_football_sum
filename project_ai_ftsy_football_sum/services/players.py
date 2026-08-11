@@ -147,6 +147,20 @@ class PlayerReference:
         """How many seasons back this is from the one we are living in."""
         return max(calendar_season() - self.season, 0)
 
+    @property
+    def teams(self) -> tuple[str, ...]:
+        """Every team the reference holds players for, for the team filter.
+
+        Read off the rows rather than from a list of the league, so the filter
+        never offers a team whose depth chart nflverse has not published.
+        """
+        return tuple(sorted({row.team for row in self.rows if row.team}))
+
+    @property
+    def positions(self) -> tuple[str, ...]:
+        """Every position the reference holds, for the position filter."""
+        return tuple(sorted({row.position for row in self.rows if row.position}))
+
 
 def calendar_season() -> int:
     """The NFL season we are currently in.

@@ -6,16 +6,22 @@ The column set is completed here: player, team, position, depth rank, ECR tier, 
 
 **Blocked by:** 06.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every column sorts, ascending and descending.
-- [ ] Teams filter as a multi-select.
-- [ ] Positions filter as a multi-select.
-- [ ] A depth-rank cutoff hides players below the chosen depth.
-- [ ] Name search narrows the table as it is typed.
-- [ ] Filters combine rather than replacing one another.
-- [ ] ECR tier, ECR rank, bye week, and injury status are all present as columns.
-- [ ] Injury status renders blank when the feed has no current-week data for that player.
-- [ ] Filtering and sorting happen client-side with no server round trip.
-- [ ] Numeric columns use tabular numerals so they align down the column.
-- [ ] Tests assert the page ships the full reference and renders the complete column set.
+- [x] Every column sorts, ascending and descending.
+- [x] Teams filter as a multi-select.
+- [x] Positions filter as a multi-select.
+- [x] A depth-rank cutoff hides players below the chosen depth.
+- [x] Name search narrows the table as it is typed.
+- [x] Filters combine rather than replacing one another.
+- [x] ECR tier, ECR rank, bye week, and injury status are all present as columns.
+- [x] Injury status renders blank when the feed has no current-week data for that player.
+- [x] Filtering and sorting happen client-side with no server round trip.
+- [x] Numeric columns use tabular numerals so they align down the column.
+- [x] Tests assert the page ships the full reference and renders the complete column set.
+
+**Notes:** The reference is shipped as the rendered table with each row's values on
+its `<tr>` as `data-*` attributes, rather than as the JSON the spec named — see
+ADR-0003. The interaction itself (`static/js/players.js`) has no automated test:
+there is no browser in the suite, so what is pinned is the contract between the
+markup and the script.
