@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - feat/tr/2026-updates # Triggers whenever you push to main from Windows or Mac
+      - main # Triggers whenever you push to main from Windows or Mac
   workflow_dispatch: # Allows you to manually trigger the workflow and select a branch
 
 jobs:
