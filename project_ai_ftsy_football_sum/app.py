@@ -23,6 +23,12 @@ from project_ai_ftsy_football_sum.services.download import (
     download_filename,
     markdown_document,
 )
+from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
+from project_ai_ftsy_football_sum.services.players import (
+    NflverseUnavailableError,
+    ensure_reference,
+    sync_reference,
+)
 from project_ai_ftsy_football_sum.services.runs import (
     Event,
     LiveRuns,
@@ -60,6 +66,28 @@ def get_store(request: Request) -> RunStore:
     return request.app.state.store
 
 
+def get_players(request: Request) -> PlayerCache:
+    """The cached player reference. Usable as a FastAPI dependency."""
+    return request.app.state.players
+
+
+def _player_reference(request: Request, *, sync: bool) -> dict[str, object]:
+    """What the Players page and its fragment both render from.
+
+    A sync that could not be done is reported rather than swallowed — the
+    reader pressed a button — but whatever was cached is still shown beneath
+    it, because an older reference beats an error page.
+    """
+    cache = get_players(request)
+    try:
+        reference = (sync_reference if sync else ensure_reference)(
+            get_container(request), cache
+        )
+    except NflverseUnavailableError as error:
+        return {"reference": cache.load(), "unavailable": str(error)}
+    return {"reference": reference}
+
+
 def _saved_run(request: Request, run_id: int) -> Run:
     """The run with that identifier, or a 404 for the reader who asked."""
     run = get_store(request).get(run_id)
@@ -86,6 +114,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     actually served.
     """
     app.state.store.initialize()
+    app.state.players.initialize()
     yield
 
 
@@ -95,6 +124,9 @@ def create_app(
     app = FastAPI(title="Fantasy Football Podcast Summarizer", lifespan=lifespan)
     app.state.container = container if container is not None else Container()
     app.state.store = store if store is not None else RunStore(database_path())
+    # The same file the runs are in: one volume holds everything the app must
+    # not lose, which is the whole reason the data directory is a directory.
+    app.state.players = PlayerCache(app.state.store.path)
     app.state.runs = LiveRuns()
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -108,6 +140,24 @@ def create_app(
                 "nav_active": "home",
                 "recent_runs": get_store(request).recent(RECENT_RUN_LIMIT),
             },
+        )
+
+    @app.get("/players", response_class=HTMLResponse)
+    def players(request: Request) -> HTMLResponse:
+        """The player reference Claude works from, as the reader can check it."""
+        return templates.TemplateResponse(
+            request,
+            "players.html",
+            {"nav_active": "players", **_player_reference(request, sync=False)},
+        )
+
+    @app.post("/players/sync", response_class=HTMLResponse)
+    def players_sync(request: Request) -> HTMLResponse:
+        """Sync now: fetch the reference again whatever the cache says."""
+        return templates.TemplateResponse(
+            request,
+            "fragments/player_reference.html",
+            _player_reference(request, sync=True),
         )
 
     @app.get("/history", response_class=HTMLResponse)
@@ -191,6 +241,7 @@ def create_app(
                 url=youtube_url,
                 container=container,
                 store=store,
+                players=get_players(request),
                 model=claude_model(),
                 publish=publish,
             )

@@ -22,6 +22,21 @@
   >Download</a>
 {% endmacro %}
 
+{# Fetch the player reference again now. Offered above the table and again in
+   place of it when there is nothing to show, so it looks and behaves the same
+   whether or not a sync has ever succeeded. #}
+{% macro sync_button() %}
+  <button
+    type="button"
+    hx-post="/players/sync"
+    hx-target="#player-reference"
+    hx-swap="outerHTML"
+    class="heading rounded-md bg-accent px-5 py-2 text-xs text-accent-ink hover:bg-accent-bright focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+  >
+    Sync now
+  </button>
+{% endmacro %}
+
 {% macro no_runs_yet() %}
   <p class="rounded-lg border border-dashed border-line px-6 py-8 text-center text-sm text-muted/70">
     No runs yet. Summarize an episode and it is saved here automatically.

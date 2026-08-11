@@ -22,6 +22,7 @@ from project_ai_ftsy_football_sum.config import (
     database_path,
 )
 from project_ai_ftsy_football_sum.container import Container
+from project_ai_ftsy_football_sum.services.players import calendar_season
 from project_ai_ftsy_football_sum.services.store import RunStore
 from tests.events import EPISODE_URL, run_episode, run_titled
 from tests.fakes import FakeClaudeClient, FakeYouTubeSource
@@ -211,7 +212,9 @@ def test_starting_up_against_an_existing_database_keeps_its_runs(
 def test_a_saved_run_records_everything_needed_to_reopen_it(
     client: TestClient, app_store: RunStore, claude: FakeClaudeClient
 ) -> None:
-    """Season stays empty until the player reference ticket fills it in."""
+    """Everything a reopened run shows, including the season it was written
+    against — a summary means something different if the players were last
+    year's."""
     run_episode(client)
 
     run = app_store.recent(1)[0]
@@ -226,4 +229,4 @@ def test_a_saved_run_records_everything_needed_to_reopen_it(
     assert run.duration_seconds >= 0
     assert run.summary == claude.summary
     assert run.model == DEFAULT_MODEL
-    assert run.season is None
+    assert run.season == calendar_season()

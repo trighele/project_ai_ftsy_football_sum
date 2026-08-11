@@ -63,12 +63,22 @@ def claude() -> FakeClaudeClient:
 
 
 @pytest.fixture
-def container(youtube: FakeYouTubeSource, claude: FakeClaudeClient) -> Container:
+def nflverse() -> FakeNflverseSource:
+    """The nflverse edge, serving the fixture frames and counting syncs."""
+    return FakeNflverseSource()
+
+
+@pytest.fixture
+def container(
+    youtube: FakeYouTubeSource,
+    nflverse: FakeNflverseSource,
+    claude: FakeClaudeClient,
+) -> Container:
     """A container with all three network edges replaced by fakes."""
     container = Container()
     container.override(
         captions=youtube,
-        nflverse=FakeNflverseSource(),
+        nflverse=nflverse,
         claude=claude,
     )
     return container

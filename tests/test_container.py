@@ -15,7 +15,9 @@ from project_ai_ftsy_football_sum.container import (
     Container,
     EdgeNotWiredError,
 )
+from project_ai_ftsy_football_sum.container import _unwired as unwired
 from project_ai_ftsy_football_sum.services.claude import ClaudeClient
+from project_ai_ftsy_football_sum.services.nflverse import NflverseSource
 from project_ai_ftsy_football_sum.services.youtube import YouTubeSource
 
 
@@ -54,9 +56,16 @@ def test_real_factory_is_used_when_not_overridden_and_resolved_once(edge: str) -
     assert real_factory.calls == 1
 
 
-@pytest.mark.parametrize("edge", UNWIRED_EDGES)
-def test_unwired_edge_reports_which_source_supplies_it(edge: str) -> None:
-    container = Container()
+def test_every_edge_has_a_real_implementation() -> None:
+    assert UNWIRED_EDGES == ()
+
+
+@pytest.mark.parametrize("edge", EDGES)
+def test_an_edge_without_an_implementation_says_which_source_supplies_it(
+    edge: str,
+) -> None:
+    """The state every edge starts its ticket in, kept working for the next one."""
+    container = Container(factories={edge: unwired(edge)})
 
     with pytest.raises(EdgeNotWiredError, match=edge):
         container.resolve(edge)
@@ -65,6 +74,10 @@ def test_unwired_edge_reports_which_source_supplies_it(edge: str) -> None:
 def test_the_captions_edge_resolves_to_the_real_youtube_source() -> None:
     """Building the edge must not open a connection — only using it does."""
     assert isinstance(Container().resolve("captions"), YouTubeSource)
+
+
+def test_the_nflverse_edge_resolves_to_the_real_source() -> None:
+    assert isinstance(Container().resolve("nflverse"), NflverseSource)
 
 
 def test_the_claude_edge_resolves_to_the_real_client(
@@ -122,14 +135,19 @@ def test_status_fragment_reports_ready_when_the_edges_are_overridden(
     assert "Not ready" not in response.text
 
 
-def test_status_fragment_reports_not_ready_without_overrides() -> None:
-    with TestClient(create_app(container=Container())) as unwired_client:
-        response = unwired_client.get("/fragments/status")
+def test_status_fragment_names_an_edge_that_cannot_be_built(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An edge that will not build is named, not merely counted."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+
+    with TestClient(create_app(container=Container())) as unconfigured:
+        response = unconfigured.get("/fragments/status")
 
     assert response.status_code == 200
     assert "Not ready" in response.text
-    for edge in UNWIRED_EDGES:
-        assert edge in response.text
+    assert "claude" in response.text
 
 
 def test_app_exposes_the_container_it_was_built_with(

@@ -14,13 +14,13 @@ needs is declared now and left empty until then.
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Iterator
-from contextlib import closing, contextmanager
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from project_ai_ftsy_football_sum.services.sqlite import connect, create_schema
 from project_ai_ftsy_football_sum.services.transcripts import (
     Episode,
     date_label,
@@ -28,8 +28,8 @@ from project_ai_ftsy_football_sum.services.transcripts import (
 )
 
 #: Every column, created on startup when the table is not there. `season` is
-#: filled by the player reference ticket; it is declared here so that ticket
-#: needs no schema change.
+#: the season of the player reference the run was summarized against — see
+#: `services/players.py` for why that is worth keeping.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,8 +89,8 @@ class Run:
     """One end-to-end pass over an episode, as it is kept.
 
     A run carries everything needed to reopen it without going back to
-    YouTube or to Claude. `season` stays empty until the player reference
-    ticket fills it.
+    YouTube or to Claude, `season` included: which season's players it was
+    summarized against is part of what the summary means.
     """
 
     url: str
@@ -115,6 +115,7 @@ class Run:
         duration_seconds: float,
         summary: str | None = None,
         model: str | None = None,
+        season: int | None = None,
     ) -> Run:
         """The run to save for an episode that has just been summarized."""
         return cls(
@@ -125,6 +126,7 @@ class Run:
             channel=episode.channel,
             upload_date=episode.upload_date,
             summary=summary,
+            season=season,
             model=model,
             duration_seconds=duration_seconds,
         )
@@ -141,29 +143,14 @@ class Run:
 
 
 class RunStore:
-    """Reads and writes saved runs in one SQLite file.
-
-    A connection is opened per operation rather than held open. SQLite makes
-    that cheap, and it keeps the store safe to call from the request threads
-    FastAPI runs synchronous endpoints on without any thread-affinity rules.
-    """
+    """Reads and writes saved runs in one SQLite file."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
 
     def initialize(self) -> None:
-        """Create the database and its schema if they are not there yet.
-
-        Idempotent: starting against an existing file leaves its runs alone.
-        """
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with closing(sqlite3.connect(self.path)) as connection:
-            # Outside any transaction, because switching journal mode from
-            # inside one is an error. Readers are not blocked by the writer,
-            # which matters once a run is saved while a page is being served.
-            connection.execute("PRAGMA journal_mode = WAL")
-            with connection:
-                connection.executescript(SCHEMA)
+        """Create the database and its schema if they are not there yet."""
+        create_schema(self.path, SCHEMA)
 
     def save(self, run: Run) -> Run:
         """Persist a finished run and return it with its assigned identifier."""
@@ -222,12 +209,8 @@ class RunStore:
             ).fetchall()
         return [_run_from_row(row) for row in rows]
 
-    @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
-        with closing(sqlite3.connect(self.path)) as connection:
-            connection.row_factory = sqlite3.Row
-            with connection:
-                yield connection
+    def _connect(self) -> AbstractContextManager[sqlite3.Connection]:
+        return connect(self.path)
 
 
 def _row_values(run: Run) -> tuple[Any, ...]:

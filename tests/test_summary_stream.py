@@ -47,6 +47,7 @@ def test_the_sse_event_sequence_for_a_successful_run(client: TestClient) -> None
         "stage:captions",
         "stage:metadata",
         "transcript",
+        "stage:players",
         "stage:summarizing",
         "summary",
         "done",
@@ -80,6 +81,7 @@ def test_stage_transitions_are_announced_with_words_for_the_reader(
     assert [stage.data["stage"] for stage in stages] == [
         "captions",
         "metadata",
+        "players",
         "summarizing",
     ]
     assert all(stage.data["label"].strip() for stage in stages)
@@ -234,6 +236,7 @@ def test_the_transcript_still_arrived_before_a_claude_failure(
         "stage:captions",
         "stage:metadata",
         "transcript",
+        "stage:players",
         "stage:summarizing",
         "failed",
     ]

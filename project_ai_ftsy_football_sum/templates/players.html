@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Players &middot; Fantasy Football Podcast Summarizer{% endblock %}
+
+{% block content %}
+  <section>
+    <h1 class="heading text-4xl leading-none text-ink sm:text-5xl">
+      The player <span class="text-accent">reference</span>
+    </h1>
+    <p class="mt-4 max-w-2xl text-sm text-muted">
+      Every player on an NFL depth chart, as summaries are written against
+      them. <span class="text-ink">Depth rank</span> is where a player sits on
+      their team&rsquo;s depth chart &mdash; who is on the field.
+      <span class="text-ink">ECR tier</span> is where their expert consensus
+      ranking falls &mdash; who is worth starting. A starting kicker is depth
+      rank 1 and a bottom ECR tier; the two do not imply one another.
+    </p>
+
+    {% include "fragments/player_reference.html" %}
+  </section>
+{% endblock %}

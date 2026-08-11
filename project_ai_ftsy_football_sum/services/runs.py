@@ -31,6 +31,12 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from project_ai_ftsy_football_sum.container import Container, Edge
+from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
+from project_ai_ftsy_football_sum.services.players import (
+    NflverseUnavailableError,
+    PlayerReference,
+    ensure_reference,
+)
 from project_ai_ftsy_football_sum.services.store import Run, RunStore
 from project_ai_ftsy_football_sum.services.summarize import (
     SummaryClient,
@@ -50,19 +56,19 @@ from project_ai_ftsy_football_sum.templating import fragment
 #: The events that end a run. Every run emits exactly one of them.
 TERMINAL_EVENTS = frozenset({"done", "failed"})
 
-#: The parts of a run the reader is told about. The player reference ticket
-#: adds its own between `metadata` and `summarizing`.
-Stage = Literal["captions", "metadata", "summarizing"]
+#: The parts of a run the reader is told about.
+Stage = Literal["captions", "metadata", "players", "summarizing"]
 
 #: Why a run stopped. The failures ticket completes this set — written down as
 #: a type, like the container's edges, so a misspelt kind is a mistake that can
 #: be seen rather than one that waits for the failure path to be taken.
-FailureKind = Literal["invalid_url", "captions", "claude", "unknown"]
+FailureKind = Literal["invalid_url", "captions", "nflverse", "claude", "unknown"]
 
 #: What the reader is told as each part of a run lands.
 STAGE_LABELS: Mapping[Stage, str] = {
     "captions": "Captions retrieved",
     "metadata": "Episode identified",
+    "players": "Player reference loaded",
     "summarizing": "Summarizing with Claude…",
 }
 
@@ -74,6 +80,10 @@ FAILURE_MESSAGES: Mapping[FailureKind, str] = {
     "captions": (
         "Something went wrong retrieving this episode from YouTube. "
         "Check the link and try again."
+    ),
+    "nflverse": (
+        "The player reference could not be fetched from nflverse, and nothing "
+        "has been cached yet. Try again in a few minutes."
     ),
     "claude": (
         "Claude could not finish this summary. The transcript came back fine, "
@@ -215,6 +225,7 @@ def perform(
     url: str,
     container: Container,
     store: RunStore,
+    players: PlayerCache,
     model: str,
     publish: Publish,
 ) -> None:
@@ -227,6 +238,7 @@ def perform(
     started = time.perf_counter()
     try:
         episode = _resolve_episode(url, container, publish)
+        reference = _load_players(container, players, publish)
         summary, model_used = _write_summary(episode, container, model, publish)
     except RunFailed as failure:
         publish(_failure_event(failure))
@@ -237,9 +249,33 @@ def perform(
 
     elapsed = time.perf_counter() - started
     saved = store.save(
-        Run.of(episode, duration_seconds=elapsed, summary=summary, model=model_used)
+        Run.of(
+            episode,
+            duration_seconds=elapsed,
+            summary=summary,
+            model=model_used,
+            season=reference.season,
+        )
     )
     publish(_done_event(saved, elapsed))
+
+
+def _load_players(
+    container: Container, players: PlayerCache, publish: Publish
+) -> PlayerReference:
+    """Make sure the player reference is current before Claude is asked.
+
+    A stale cache is synced here rather than on a schedule, so a run is never
+    summarized against last week's depth charts and nobody has to remember to
+    press anything. A sync that fails but leaves a cached reference behind is
+    not a failure — see `ensure_reference`.
+    """
+    try:
+        reference = ensure_reference(container, players)
+    except NflverseUnavailableError as error:
+        raise RunFailed("nflverse") from error
+    publish(_stage_event("players"))
+    return reference
 
 
 def _resolve_episode(url: str, container: Container, publish: Publish) -> Episode:

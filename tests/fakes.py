@@ -8,7 +8,7 @@ bad URL before any network call is a requirement, not an implementation detail.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +96,69 @@ class FakeYouTubeSource:
 
 
 class FakeNflverseSource:
-    """Stand-in for the nflverse edge. Wired up by ticket 06."""
+    """Serves fixture frames in place of nflverse.
+
+    Polars frames, because that is what `nflreadpy` hands back and the
+    requirement under test is that they get converted before they escape the
+    player service. Which seasons hold depth charts is settable, so the
+    fallback to an earlier season is exercised without the network.
+    """
+
+    def __init__(
+        self,
+        *,
+        seasons: Sequence[int] | None = None,
+        error: Exception | None = None,
+        injuries_error: Exception | None = None,
+    ) -> None:
+        #: The seasons nflverse holds depth charts for. `None` means every one.
+        self.seasons = seasons
+        self.error = error
+        #: The injury feed alone failing, which is what nflverse does for a
+        #: season that has depth charts but has not kicked off.
+        self.injuries_error = injuries_error
+        self.calls: list[tuple[str, int | None]] = []
+
+    @property
+    def syncs(self) -> int:
+        """How many times the whole reference has been assembled.
+
+        Counted on the players call, which every sync makes exactly once —
+        depth charts can be asked for several times while a season is resolved.
+        """
+        return sum(1 for name, _ in self.calls if name == "players")
+
+    def depth_charts(self, season: int) -> Any:
+        self._record("depth_charts", season)
+        if self.seasons is not None and season not in self.seasons:
+            return _frame([])
+        return _frame(fixture("nflverse_depth_charts"))
+
+    def players(self) -> Any:
+        self._record("players")
+        return _frame(fixture("nflverse_players"))
+
+    def fantasy_rankings(self) -> Any:
+        self._record("fantasy_rankings")
+        return _frame(fixture("nflverse_ff_rankings"))
+
+    def injuries(self, season: int) -> Any:
+        self._record("injuries", season)
+        if self.injuries_error is not None:
+            raise self.injuries_error
+        return _frame(fixture("nflverse_injuries"))
+
+    def _record(self, name: str, season: int | None = None) -> None:
+        self.calls.append((name, season))
+        if self.error is not None:
+            raise self.error
+
+
+def _frame(records: list[dict[str, Any]]) -> Any:
+    """The fixture records as the Polars frame nflreadpy would have returned."""
+    import polars as pl
+
+    return pl.DataFrame(records, infer_schema_length=None)
 
 
 #: A canned summary, in the pieces Claude would have written it in. It keeps

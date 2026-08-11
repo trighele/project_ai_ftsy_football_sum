@@ -1,0 +1,91 @@
+{# The player reference: the strip that says what it is, and the table itself.
+
+   Rendered inside the Players page and again on its own after a **Sync now**,
+   which replaces this whole section — the strip has to change with the table,
+   because the sync time is the part that moved.
+
+   Depth rank and ECR tier are two columns with two names on purpose. See
+   ADR-0002; a reader who takes one for the other has been misled by us. #}
+{% import "macros.html" as macros %}
+<section id="player-reference" class="mt-8">
+  {% if unavailable %}
+    <p
+      class="rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-200"
+      role="status"
+    >
+      <span class="heading text-red-300">Sync failed.</span>
+      {{ unavailable }}
+      {% if reference %}
+        What is below is the reference that was already here.
+      {% endif %}
+    </p>
+  {% endif %}
+
+  {% if reference %}
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-line bg-panel px-5 py-4">
+      <div class="min-w-0">
+        <p class="heading text-sm text-ink">
+          {{ reference.season }} season
+          <span class="text-muted/60">&middot;</span>
+          <span class="text-muted">{{ reference.rows | length }} players</span>
+        </p>
+        <p class="mt-1 text-xs text-muted">
+          Synced {{ reference.synced_label }} from nflverse.
+        </p>
+      </div>
+      {{ macros.sync_button() }}
+    </div>
+
+    {% if reference.seasons_behind %}
+      <p
+        class="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-amber-200"
+        role="status"
+      >
+        <span class="heading text-amber-300">Not this season&rsquo;s data.</span>
+        This is the {{ reference.season }} reference &mdash;
+        {{ reference.seasons_behind }}
+        {{ "season" if reference.seasons_behind == 1 else "seasons" }} behind the
+        {{ reference.season + reference.seasons_behind }} season, because
+        nflverse has published no depth charts since. Treat the depth ranks
+        below as where players finished, not where they will start.
+      </p>
+    {% endif %}
+
+    <div class="mt-4 overflow-x-auto rounded-lg border border-line">
+      <table class="w-full border-collapse text-left text-sm">
+        <thead class="bg-panel">
+          <tr class="heading text-[0.65rem] text-muted">
+            <th scope="col" class="px-4 py-3 font-normal">Player</th>
+            <th scope="col" class="px-4 py-3 font-normal">Team</th>
+            <th scope="col" class="px-4 py-3 font-normal">Position</th>
+            <th scope="col" class="px-4 py-3 font-normal" title="Where they sit on their team's depth chart">Depth rank</th>
+            <th scope="col" class="px-4 py-3 font-normal" title="Which league's-worth of expert consensus rank they fall in">ECR tier</th>
+            <th scope="col" class="px-4 py-3 font-normal">ECR rank</th>
+            <th scope="col" class="px-4 py-3 font-normal">Bye</th>
+            <th scope="col" class="px-4 py-3 font-normal">Injury status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for row in reference.rows %}
+            <tr class="hover:bg-accent/5">
+              <td class="px-4 py-2 text-ink">{{ row.player_name }}</td>
+              <td class="px-4 py-2 text-muted">{{ row.team }}</td>
+              <td class="px-4 py-2 text-muted">{{ row.position or "—" }}</td>
+              <td class="px-4 py-2 tabular-nums text-muted">{{ row.depth_rank if row.depth_rank is not none else "—" }}</td>
+              <td class="px-4 py-2 tabular-nums text-muted">{{ row.ecr_tier if row.ecr_tier is not none else "—" }}</td>
+              <td class="px-4 py-2 tabular-nums text-muted">{{ "%.1f" | format(row.ecr_rank) if row.ecr_rank is not none else "—" }}</td>
+              <td class="px-4 py-2 tabular-nums text-muted">{{ row.bye_week if row.bye_week is not none else "—" }}</td>
+              <td class="px-4 py-2 text-muted">{{ row.injury_status or "—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="mt-4 rounded-lg border border-dashed border-line px-6 py-8 text-center text-sm text-muted/70">
+      Nothing has been synced from nflverse yet, so there is no reference to
+      show.
+    </p>
+    <p class="mt-4 text-center">{{ macros.sync_button() }}</p>
+  {% endif %}
+</section>

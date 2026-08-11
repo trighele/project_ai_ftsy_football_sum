@@ -51,6 +51,13 @@ def _captions() -> Any:
     return YouTubeSource()
 
 
+def _nflverse() -> Any:
+    """Imported here so nothing outside a real sync pays for Polars."""
+    from project_ai_ftsy_football_sum.services.nflverse import NflverseSource
+
+    return NflverseSource()
+
+
 def _claude() -> Any:
     """Imported here so nothing outside a real run pays for the SDK."""
     from project_ai_ftsy_football_sum.services.claude import ClaudeClient
@@ -62,6 +69,7 @@ def _claude() -> Any:
 #: until their ticket lands.
 DEFAULT_FACTORIES: Mapping[Edge, Callable[[], Any]] = {
     "captions": _captions,
+    "nflverse": _nflverse,
     "claude": _claude,
 }
 

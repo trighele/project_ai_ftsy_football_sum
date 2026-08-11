@@ -18,7 +18,7 @@
         <nav class="flex items-center gap-1" aria-label="Main">
           {% set nav_items = [
             ('home', 'Home', '/', true),
-            ('players', 'Players', none, false),
+            ('players', 'Players', '/players', true),
             ('history', 'History', '/history', true),
           ] %}
           {% for key, label, href, available in nav_items %}

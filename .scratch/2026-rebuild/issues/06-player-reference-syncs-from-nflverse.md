@@ -14,15 +14,15 @@ The table in this ticket can be plain: all rows, fixed column order, no filterin
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A Players page renders the full current player reference.
-- [ ] Depth rank and ECR tier appear as distinct columns with distinct names; nothing in the schema, page, or code is named simply `tier`.
-- [ ] The header strip shows the season in use and how long ago the reference was synced.
-- [ ] A warning renders when the resolved season is behind the current calendar season.
-- [ ] **Sync now** refreshes the reference immediately and updates the last-synced time.
-- [ ] A stale cache triggers an automatic sync; a fresh one does not.
-- [ ] With no nflverse data for the current season, the app resolves to the most recent season that has data and says which.
-- [ ] Polars frames do not escape the player service.
-- [ ] The nflverse source is resolved through the dependency container and is replaced by fixture frames in tests.
-- [ ] Tests cover a cold sync, a cached read within TTL, a stale-cache refresh, and the season fallback path.
+- [x] A Players page renders the full current player reference.
+- [x] Depth rank and ECR tier appear as distinct columns with distinct names; nothing in the schema, page, or code is named simply `tier`.
+- [x] The header strip shows the season in use and how long ago the reference was synced.
+- [x] A warning renders when the resolved season is behind the current calendar season.
+- [x] **Sync now** refreshes the reference immediately and updates the last-synced time.
+- [x] A stale cache triggers an automatic sync; a fresh one does not.
+- [x] With no nflverse data for the current season, the app resolves to the most recent season that has data and says which.
+- [x] Polars frames do not escape the player service.
+- [x] The nflverse source is resolved through the dependency container and is replaced by fixture frames in tests.
+- [x] Tests cover a cold sync, a cached read within TTL, a stale-cache refresh, and the season fallback path.

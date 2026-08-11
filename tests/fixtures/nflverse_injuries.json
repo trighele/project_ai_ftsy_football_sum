@@ -1,0 +1,29 @@
+[
+  {
+    "season": 2026,
+    "week": 1,
+    "team": "CIN",
+    "gsis_id": "00-0039154",
+    "full_name": "Chase Brown",
+    "position": "RB",
+    "report_status": "Out"
+  },
+  {
+    "season": 2026,
+    "week": 2,
+    "team": "CIN",
+    "gsis_id": "00-0036442",
+    "full_name": "Joe Burrow",
+    "position": "QB",
+    "report_status": "Questionable"
+  },
+  {
+    "season": 2026,
+    "week": 2,
+    "team": "ATL",
+    "gsis_id": "00-0036916",
+    "full_name": "Drake London",
+    "position": "WR",
+    "report_status": null
+  }
+]
