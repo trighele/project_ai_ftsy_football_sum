@@ -174,13 +174,21 @@ class ReferenceOutcome:
     """
 
     reference: PlayerReference
-    #: Why the reference is not freshly synced, in the words a reader is shown.
-    #: `None` when it is freshly synced, which is the only thing anything tests.
-    sync_error: str | None = None
-    #: The same failure as the error underneath it, for the disclosure toggle.
-    #: Two fields because they have two readers: a page strip that must read as
-    #: a sentence, and a toggle whose whole point is the exception text.
-    sync_detail: str | None = None
+    #: What went wrong syncing, or `None` when nothing did. Kept as the failure
+    #: itself rather than as the two strings read off it, because they are one
+    #: fact with two readings: a sentence for the strip, and the exception text
+    #: for the toggle under it.
+    sync_failure: NflverseUnavailableError | None = None
+
+    @property
+    def sync_error(self) -> str | None:
+        """Why the reference is not freshly synced, in the words a reader sees."""
+        return None if self.sync_failure is None else str(self.sync_failure)
+
+    @property
+    def sync_detail(self) -> str | None:
+        """The same failure as the error underneath it, for the toggle."""
+        return None if self.sync_failure is None else error_detail(self.sync_failure)
 
 
 def calendar_season() -> int:
@@ -210,9 +218,7 @@ def ensure_reference(container: Container, cache: ReferenceCache) -> ReferenceOu
     except NflverseUnavailableError as error:
         if cached is None:
             raise
-        return ReferenceOutcome(
-            cached, sync_error=str(error), sync_detail=error_detail(error)
-        )
+        return ReferenceOutcome(cached, sync_failure=error)
 
 
 def sync_reference(container: Container, cache: ReferenceCache) -> PlayerReference:

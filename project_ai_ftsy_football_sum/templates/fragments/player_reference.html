@@ -9,16 +9,21 @@
 {% import "macros.html" as macros %}
 <section id="player-reference" class="mt-8">
   {% if unavailable %}
-    <p
+    {# The toggle sits beside the sentence rather than inside it: a `<details>`
+       is not something a paragraph may contain. #}
+    <div
       class="rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-200"
       role="status"
     >
-      <span class="heading text-red-300">Sync failed.</span>
-      {{ unavailable }}
-      {% if reference %}
-        What is below is the reference that was already here.
-      {% endif %}
-    </p>
+      <p>
+        <span class="heading text-red-300">Sync failed.</span>
+        {{ unavailable }}
+        {% if reference %}
+          What is below is the reference that was already here.
+        {% endif %}
+      </p>
+      {{ macros.raw_error(unavailable_detail) }}
+    </div>
   {% endif %}
 
   {% if reference %}

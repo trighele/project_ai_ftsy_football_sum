@@ -23,6 +23,7 @@ from project_ai_ftsy_football_sum.services.download import (
     download_filename,
     markdown_document,
 )
+from project_ai_ftsy_football_sum.services.failures import error_detail
 from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
 from project_ai_ftsy_football_sum.services.players import (
     NflverseUnavailableError,
@@ -86,8 +87,16 @@ def _player_reference(request: Request, *, sync: bool) -> dict[str, object]:
             return {"reference": sync_reference(container, cache)}
         outcome = ensure_reference(container, cache)
     except NflverseUnavailableError as error:
-        return {"reference": cache.load(), "unavailable": str(error)}
-    return {"reference": outcome.reference, "unavailable": outcome.sync_error}
+        return {
+            "reference": cache.load(),
+            "unavailable": str(error),
+            "unavailable_detail": error_detail(error),
+        }
+    return {
+        "reference": outcome.reference,
+        "unavailable": outcome.sync_error,
+        "unavailable_detail": outcome.sync_detail,
+    }
 
 
 def _saved_run(request: Request, run_id: int) -> Run:

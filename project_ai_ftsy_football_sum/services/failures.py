@@ -11,14 +11,14 @@ YouTube did, and they never contain the underlying exception — that travels
 alongside as `detail` and is rendered behind a disclosure toggle, available
 when wanted and out of the way when not.
 
-Classifying a caption failure is done on the exception's class name rather than
-its message, because `youtube-transcript-api` gives every one of its errors the
-same opening paragraph: "no captions", "this video is private" and "you have
-been rate limited" are one string and three very different things to be told.
-The names are the library's public API — they are what it documents and what
-callers catch. Reading them here rather than importing them keeps the run
-engine free of a caption library, which matters because the same function
-classifies whatever a future edge raises.
+Classifying a caption failure reads the exception's class name first and its
+message only if no name is recognised, because `youtube-transcript-api` gives
+every one of its errors the same opening paragraph: "no captions", "this video
+is private" and "you have been rate limited" are one string and three very
+different things to be told. The names are the library's public API — they are
+what it documents and what callers catch. Reading them here rather than
+importing them keeps the run engine free of a caption library, which matters
+because the same function classifies whatever a future edge raises.
 """
 
 from __future__ import annotations
@@ -109,10 +109,16 @@ _YOUTUBE_ERRORS: Mapping[str, FailureKind] = {
     "YouTubeRequestFailed": "youtube_blocked",
 }
 
-#: The fallback for an error that arrived as something plainer than one of the
-#: library's own classes — a `RuntimeError` from a wrapper, or yt-dlp, which
-#: raises one `DownloadError` for everything and puts the reason in the text.
-#: Ordered: the first phrase found decides, so the specific ones come first.
+#: The fallback for an error that arrives as something plainer than one of the
+#: library's own subclasses — the base `CouldNotRetrieveTranscript`, whose text
+#: is the only thing saying which of these happened, or a `RuntimeError` from
+#: something wrapping it.
+#:
+#: Every phrase is one a person would only write about the thing it points at.
+#: A bare "unavailable" or "forbidden" is not, which is why neither is here: a
+#: kind guessed off a stray word is worse than `unknown`, because `unknown`
+#: shows the error and a wrong kind hides it behind confident advice.
+#: Ordered — the first phrase found decides, so the specific ones come first.
 _YOUTUBE_PHRASES: tuple[tuple[str, FailureKind], ...] = (
     ("subtitles are disabled", "no_captions"),
     ("no transcript", "no_captions"),
@@ -120,14 +126,14 @@ _YOUTUBE_PHRASES: tuple[tuple[str, FailureKind], ...] = (
     ("members-only", "video_unavailable"),
     ("age-restricted", "video_unavailable"),
     ("age restricted", "video_unavailable"),
-    ("sign in to confirm you're not a bot", "youtube_blocked"),
-    ("too many requests", "youtube_blocked"),
     ("private video", "video_unavailable"),
     ("is private", "video_unavailable"),
+    ("no longer available", "video_unavailable"),
+    ("video unavailable", "video_unavailable"),
     ("has been removed", "video_unavailable"),
-    ("unavailable", "video_unavailable"),
+    ("sign in to confirm you're not a bot", "youtube_blocked"),
+    ("too many requests", "youtube_blocked"),
     ("blocked", "youtube_blocked"),
-    ("forbidden", "youtube_blocked"),
 )
 
 

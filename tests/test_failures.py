@@ -208,6 +208,22 @@ def test_an_unusable_url_offers_the_toggle_too(client: TestClient) -> None:
     assert "InvalidUrlError" in body
 
 
+def test_a_failed_sync_on_the_players_page_offers_the_toggle_too(
+    client: TestClient, app: FastAPI, nflverse: FakeNflverseSource
+) -> None:
+    """The same failure, wherever the reader met it."""
+    warm_the_cache(client)
+    age_the_cache(app, CACHE_TTL + timedelta(hours=1))
+    nflverse.error = RuntimeError("nflverse is unreachable")
+
+    body = html.unescape(client.get("/players").text)
+
+    assert "Sync failed" in body
+    assert "<details" in body
+    assert "nflverse is unreachable" in body
+    assert "Bijan Robinson" in body
+
+
 def test_the_raw_error_is_not_shouted_at_a_reader_who_did_not_ask(
     client: TestClient, youtube: FakeYouTubeSource
 ) -> None:

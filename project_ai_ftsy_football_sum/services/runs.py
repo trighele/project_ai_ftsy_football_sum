@@ -267,6 +267,10 @@ def _resolve_episode(url: str, container: Container, publish: Publish) -> Episod
     except InvalidUrlError as error:
         raise RunFailed.of("invalid_url", error, str(error)) from error
 
+    # `unknown` rather than one of the YouTube kinds: an edge that cannot be
+    # built is a missing library or a bad configuration here, and telling the
+    # reader that YouTube blocked them would send them to wait out an outage
+    # that is ours. `unknown` says so and shows the error.
     source = _edge(container, "captions", kind="unknown")
     try:
         transcript = transcript_from(select_track(source.list_tracks(video_id)).fetch())
