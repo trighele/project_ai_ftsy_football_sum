@@ -225,7 +225,6 @@ def test_a_claude_failure_ends_the_run_with_the_claude_error_kind(
     assert failure.name == "failed"
     assert failure.data["kind"] == "claude"
     assert "worth trying again" in failure.data["html"]
-    assert "rate limited" not in failure.data["html"]
     assert app_store.recent(1) == []
 
 
@@ -257,15 +256,14 @@ def test_an_unusable_url_fails_the_run_before_any_edge_is_touched(
     assert claude.requests == []
 
 
-def test_a_captions_failure_fails_the_run_with_the_captions_error_kind(
+def test_a_captions_failure_fails_the_run_before_claude_is_asked_anything(
     client: TestClient, youtube: FakeYouTubeSource, claude: FakeClaudeClient
 ) -> None:
     youtube.captions_error = RuntimeError("Subtitles are disabled for this video")
 
     failure = sse.terminal(run_episode(client))
 
-    assert failure.data["kind"] == "captions"
-    assert "Something went wrong" in failure.data["html"]
+    assert failure.data["kind"] == "no_captions"
     assert claude.requests == []
 
 

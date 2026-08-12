@@ -74,18 +74,20 @@ def get_players(request: Request) -> PlayerCache:
 def _player_reference(request: Request, *, sync: bool) -> dict[str, object]:
     """What the Players page and its fragment both render from.
 
-    A sync that could not be done is reported rather than swallowed — the
-    reader pressed a button — but whatever was cached is still shown beneath
-    it, because an older reference beats an error page.
+    A sync that could not be done is reported rather than swallowed — whether
+    the reader pressed **Sync now** or merely opened a page whose reference had
+    gone stale — but whatever was cached is still shown beneath it, because an
+    older reference beats an error page.
     """
     cache = get_players(request)
+    container = get_container(request)
     try:
-        reference = (sync_reference if sync else ensure_reference)(
-            get_container(request), cache
-        )
+        if sync:
+            return {"reference": sync_reference(container, cache)}
+        outcome = ensure_reference(container, cache)
     except NflverseUnavailableError as error:
         return {"reference": cache.load(), "unavailable": str(error)}
-    return {"reference": reference}
+    return {"reference": outcome.reference, "unavailable": outcome.sync_error}
 
 
 def _saved_run(request: Request, run_id: int) -> Run:

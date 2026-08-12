@@ -35,6 +35,7 @@
   function follow(panel) {
     const status = panel.querySelector("[data-run-status]");
     const episode = panel.querySelector("[data-run-episode]");
+    const warning = panel.querySelector("[data-run-warning]");
     const summaryPanel = panel.querySelector("[data-run-summary-panel]");
     const summary = panel.querySelector("[data-run-summary]");
     const failure = panel.querySelector("[data-run-failure]");
@@ -51,6 +52,12 @@
 
     events.addEventListener("transcript", (event) => {
       episode.innerHTML = JSON.parse(event.data).html;
+    });
+
+    // The run is going ahead on less than it wanted. It is not a failure and
+    // does not close the stream, so it sits above the summary it qualifies.
+    events.addEventListener("warning", (event) => {
+      warning.innerHTML = JSON.parse(event.data).html;
     });
 
     events.addEventListener("summary", (event) => {

@@ -19,13 +19,13 @@ Failures are modelled as a small set of kinds rather than raw exceptions, and tr
 
 **Blocked by:** 08.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Each of the six failure kinds renders its own specific, actionable message.
-- [ ] The raw underlying error is available behind a toggle on every failure.
-- [ ] An nflverse failure with a warm cache completes the run and displays a staleness warning naming the data's age.
-- [ ] An nflverse failure with no cache fails the run with the nflverse message.
-- [ ] A metadata failure with successful captions still completes the run, with a fallback title and unknown upload date.
-- [ ] Failures reach the browser over the existing terminal-failure event and carry the error kind.
-- [ ] A failed run does not leave a half-written record that looks successful in History.
-- [ ] Tests cover each failure kind end to end, plus both nflverse degradation paths.
+- [x] Each of the six failure kinds renders its own specific, actionable message.
+- [x] The raw underlying error is available behind a toggle on every failure.
+- [x] An nflverse failure with a warm cache completes the run and displays a staleness warning naming the data's age.
+- [x] An nflverse failure with no cache fails the run with the nflverse message.
+- [x] A metadata failure with successful captions still completes the run, with a fallback title and unknown upload date.
+- [x] Failures reach the browser over the existing terminal-failure event and carry the error kind.
+- [x] A failed run does not leave a half-written record that looks successful in History.
+- [x] Tests cover each failure kind end to end, plus both nflverse degradation paths.

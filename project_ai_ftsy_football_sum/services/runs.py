@@ -11,6 +11,7 @@ here in one place:
 
 - `stage`      — a part of the run has landed, with the words to say so.
 - `transcript` — the episode panel, rendered, once the episode is resolved.
+- `warning`    — the run is going ahead on something less than it wanted.
 - `summary`    — a piece of the summary, in the order Claude wrote it.
 - `done`       — the run finished and was saved. Terminal.
 - `failed`     — the run did not finish, and why, by kind. Terminal.
@@ -31,10 +32,16 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from project_ai_ftsy_football_sum.container import Container, Edge
+from project_ai_ftsy_football_sum.services.failures import (
+    FailureKind,
+    RunFailed,
+    classify_youtube_error,
+)
 from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
 from project_ai_ftsy_football_sum.services.players import (
     NflverseUnavailableError,
     PlayerReference,
+    ReferenceOutcome,
     ensure_reference,
 )
 from project_ai_ftsy_football_sum.services.store import Run, RunStore
@@ -59,37 +66,12 @@ TERMINAL_EVENTS = frozenset({"done", "failed"})
 #: The parts of a run the reader is told about.
 Stage = Literal["captions", "metadata", "players", "summarizing"]
 
-#: Why a run stopped. The failures ticket completes this set — written down as
-#: a type, like the container's edges, so a misspelt kind is a mistake that can
-#: be seen rather than one that waits for the failure path to be taken.
-FailureKind = Literal["invalid_url", "captions", "nflverse", "claude", "unknown"]
-
 #: What the reader is told as each part of a run lands.
 STAGE_LABELS: Mapping[Stage, str] = {
     "captions": "Captions retrieved",
     "metadata": "Episode identified",
     "players": "Player reference loaded",
     "summarizing": "Summarizing with Claude…",
-}
-
-#: What a failure of each kind is put to the reader as. The failures ticket
-#: gives each kind its own wording; until then anything that is not an unusable
-#: URL says one of these. An unusable URL says what was wrong with it, which is
-#: the only failure the reader can do anything about, so it has no entry here.
-FAILURE_MESSAGES: Mapping[FailureKind, str] = {
-    "captions": (
-        "Something went wrong retrieving this episode from YouTube. "
-        "Check the link and try again."
-    ),
-    "nflverse": (
-        "The player reference could not be fetched from nflverse, and nothing "
-        "has been cached yet. Try again in a few minutes."
-    ),
-    "claude": (
-        "Claude could not finish this summary. The transcript came back fine, "
-        "so this is worth trying again."
-    ),
-    "unknown": "Something went wrong during this run. Try again.",
 }
 
 #: How many finished runs stay followable. A run is started by one request and
@@ -206,17 +188,6 @@ class LiveRuns:
         return self._runs.get(token)
 
 
-class RunFailed(Exception):
-    """A run cannot go on, and this is the kind of failure that stopped it."""
-
-    def __init__(self, kind: FailureKind, message: str | None = None) -> None:
-        self.kind = kind
-        self.message = message or FAILURE_MESSAGES.get(
-            kind, FAILURE_MESSAGES["unknown"]
-        )
-        super().__init__(self.message)
-
-
 Publish = Callable[[Event], None]
 
 
@@ -245,8 +216,8 @@ def perform(
     except RunFailed as failure:
         publish(_failure_event(failure))
         return
-    except Exception:  # noqa: BLE001 — a run must always end on the stream
-        publish(_failure_event(RunFailed("unknown")))
+    except Exception as error:  # noqa: BLE001 — a run must always end on the stream
+        publish(_failure_event(RunFailed.of("unknown", error)))
         return
 
     elapsed = time.perf_counter() - started
@@ -270,14 +241,18 @@ def _load_players(
     A stale cache is synced here rather than on a schedule, so a run is never
     summarized against last week's depth charts and nobody has to remember to
     press anything. A sync that fails but leaves a cached reference behind is
-    not a failure — see `ensure_reference`.
+    not a failure — the run goes ahead against the older reference, and says
+    out loud how old it is, because an upstream outage should cost accuracy
+    rather than the whole summary.
     """
     try:
-        reference = ensure_reference(container, players)
+        outcome = ensure_reference(container, players)
     except NflverseUnavailableError as error:
-        raise RunFailed("nflverse") from error
+        raise RunFailed.of("nflverse", error) from error
     publish(_stage_event("players"))
-    return reference
+    if outcome.sync_error is not None:
+        publish(_warning_event(outcome))
+    return outcome.reference
 
 
 def _resolve_episode(url: str, container: Container, publish: Publish) -> Episode:
@@ -290,13 +265,13 @@ def _resolve_episode(url: str, container: Container, publish: Publish) -> Episod
     try:
         video_id = video_id_from_url(url)
     except InvalidUrlError as error:
-        raise RunFailed("invalid_url", str(error)) from error
+        raise RunFailed.of("invalid_url", error, str(error)) from error
 
-    source = _edge(container, "captions", kind="captions")
+    source = _edge(container, "captions", kind="unknown")
     try:
         transcript = transcript_from(select_track(source.list_tracks(video_id)).fetch())
-    except Exception as error:  # noqa: BLE001 — typed kinds arrive in ticket 09
-        raise RunFailed("captions") from error
+    except Exception as error:  # noqa: BLE001 — the kind is read off the error
+        raise RunFailed.of(classify_youtube_error(error), error) from error
     publish(_stage_event("captions"))
 
     metadata = describe_episode(source, watch_url(video_id))
@@ -333,8 +308,8 @@ def _write_summary(
         for text in claude.stream(request):
             written.append(text)
             publish(Event("summary", {"text": text}))
-    except Exception as error:  # noqa: BLE001 — typed kinds arrive in ticket 09
-        raise RunFailed("claude") from error
+    except Exception as error:  # noqa: BLE001 — every API failure reads the same
+        raise RunFailed.of("claude", error) from error
     return "".join(written), request.model
 
 
@@ -343,7 +318,7 @@ def _edge(container: Container, edge: Edge, *, kind: FailureKind) -> Any:
     try:
         return container.resolve(edge)
     except Exception as error:  # noqa: BLE001 — unwired, unconfigured, all one
-        raise RunFailed(kind) from error
+        raise RunFailed.of(kind, error) from error
 
 
 def lost_event() -> Event:
@@ -353,11 +328,35 @@ def lost_event() -> Event:
     running it died or was cancelled. Publishing it is what keeps a lost run
     from leaving its event stream open for as long as the browser waits.
     """
-    return _failure_event(RunFailed("unknown"))
+    return _failure_event(
+        RunFailed(
+            "unknown",
+            detail="The task running this summary ended without reporting anything.",
+        )
+    )
 
 
 def _stage_event(stage: Stage) -> Event:
     return Event("stage", {"stage": stage, "label": STAGE_LABELS[stage]})
+
+
+def _warning_event(outcome: ReferenceOutcome) -> Event:
+    """That the run is going ahead on a reference older than it wanted.
+
+    Its own event rather than part of the summary, because it is true of the
+    whole run and is worth reading before the summary it qualifies.
+    """
+    return Event(
+        "warning",
+        {
+            "kind": "nflverse",
+            "html": fragment(
+                "fragments/stale_reference.html",
+                reference=outcome.reference,
+                detail=outcome.sync_detail,
+            ),
+        },
+    )
 
 
 def _done_event(run: Run, elapsed: float) -> Event:
@@ -378,6 +377,10 @@ def _failure_event(failure: RunFailed) -> Event:
         {
             "kind": failure.kind,
             "message": failure.message,
-            "html": fragment("fragments/failure.html", message=failure.message),
+            "html": fragment(
+                "fragments/failure.html",
+                message=failure.message,
+                detail=failure.detail,
+            ),
         },
     )

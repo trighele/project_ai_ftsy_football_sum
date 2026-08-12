@@ -10,6 +10,10 @@
 
   <div class="mt-4" data-run-episode></div>
 
+  {# What the run went ahead on rather than what it wanted — a stale player
+     reference, so far. Above the summary, because it qualifies it. #}
+  <div class="empty:hidden mt-4" data-run-warning></div>
+
   {% with summary = none %}
     {% include "fragments/summary.html" %}
   {% endwith %}

@@ -160,13 +160,15 @@ def test_both_metadata_sources_failing_still_renders_the_transcript(
 def test_a_captions_failure_reports_a_failure_rather_than_a_stack_trace(
     client: TestClient, youtube: FakeYouTubeSource
 ) -> None:
+    """Which kinds a caption failure comes in is `test_failures.py`'s subject.
+    What matters here is that a run that cannot read captions ends in words."""
     youtube.captions_error = RuntimeError("Subtitles are disabled for this video")
 
     failure = sse.terminal(run_episode(client))
 
     assert failure.name == "failed"
-    assert "Something went wrong" in failure.data["html"]
-    assert "Subtitles are disabled" not in failure.data["html"]
+    assert failure.data["kind"] == "no_captions"
+    assert "Traceback" not in failure.data["html"]
 
 
 def test_metadata_is_requested_for_a_canonical_watch_url(

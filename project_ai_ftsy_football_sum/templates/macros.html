@@ -85,6 +85,23 @@
   </th>
 {% endmacro %}
 
+{# The error underneath a message, for the reader who wants it.
+
+   Shared by the panel a stopped run renders and the one a stale player
+   reference renders, so "show me what actually happened" is the same gesture
+   wherever something has gone wrong. Closed by default: it is available, not
+   on show. #}
+{% macro raw_error(detail) %}
+  {% if detail %}
+    <details class="mt-3">
+      <summary class="heading cursor-pointer text-[0.65rem] text-muted hover:text-ink">
+        Show the underlying error
+      </summary>
+      <pre class="mt-2 overflow-x-auto rounded border border-line bg-surface px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap break-words text-muted">{{ detail }}</pre>
+    </details>
+  {% endif %}
+{% endmacro %}
+
 {% macro no_runs_yet() %}
   <p class="rounded-lg border border-dashed border-line px-6 py-8 text-center text-sm text-muted/70">
     No runs yet. Summarize an episode and it is saved here automatically.

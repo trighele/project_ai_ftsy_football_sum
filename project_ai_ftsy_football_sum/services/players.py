@@ -24,6 +24,7 @@ from math import ceil, isnan
 from typing import Any, Protocol
 
 from project_ai_ftsy_football_sum.container import Container
+from project_ai_ftsy_football_sum.services.failures import error_detail
 
 #: How long a synced reference is treated as current. Depth charts move a few
 #: times a week, so twice a day is comfortably ahead of the source.
@@ -162,6 +163,26 @@ class PlayerReference:
         return tuple(sorted({row.position for row in self.rows if row.position}))
 
 
+@dataclass(frozen=True)
+class ReferenceOutcome:
+    """The reference a caller got, and whether it is the one they asked for.
+
+    A sync that failed over a warm cache is not a failure — but it is not
+    nothing either, and the caller is the only one placed to say so where the
+    reader will see it. Carrying the error back rather than swallowing it is
+    what makes the staleness warning possible.
+    """
+
+    reference: PlayerReference
+    #: Why the reference is not freshly synced, in the words a reader is shown.
+    #: `None` when it is freshly synced, which is the only thing anything tests.
+    sync_error: str | None = None
+    #: The same failure as the error underneath it, for the disclosure toggle.
+    #: Two fields because they have two readers: a page strip that must read as
+    #: a sentence, and a toggle whose whole point is the exception text.
+    sync_detail: str | None = None
+
+
 def calendar_season() -> int:
     """The NFL season we are currently in.
 
@@ -172,26 +193,26 @@ def calendar_season() -> int:
     return today.year if (today.month, today.day) >= SEASON_ROLLOVER else today.year - 1
 
 
-def ensure_reference(
-    container: Container, cache: ReferenceCache
-) -> PlayerReference:
+def ensure_reference(container: Container, cache: ReferenceCache) -> ReferenceOutcome:
     """The current reference, syncing first if the cached one has gone stale.
 
     A failed sync with something in the cache is not a failure: the caller goes
-    ahead against the older reference, whose age is on show wherever it is
-    shown. A failed sync with nothing cached is, because the alternative is a
-    summary written against no player data at all.
+    ahead against the older reference, and is told why it is the older one so
+    that its age can be put on show. A failed sync with nothing cached raises,
+    because the alternative is a summary written against no player data at all.
     """
     cached = cache.load()
     if cached is not None and not cached.is_stale:
-        return cached
+        return ReferenceOutcome(cached)
 
     try:
-        return sync_reference(container, cache)
-    except NflverseUnavailableError:
+        return ReferenceOutcome(sync_reference(container, cache))
+    except NflverseUnavailableError as error:
         if cached is None:
             raise
-        return cached
+        return ReferenceOutcome(
+            cached, sync_error=str(error), sync_detail=error_detail(error)
+        )
 
 
 def sync_reference(container: Container, cache: ReferenceCache) -> PlayerReference:
