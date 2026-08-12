@@ -5,6 +5,10 @@ metadata:
   namespace: project-ai-ftsy-football-sum 
 spec:
   replicas: 1
+  # The data volume is ReadWriteOnce, so a new pod cannot come up beside the old
+  # one holding it. Replace rather than roll, or a deploy waits forever.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: project-ai-ftsy-football-sum
@@ -27,10 +31,23 @@ spec:
         - secretRef:
             name: project-ai-ftsy-football-sum-secrets
         - configMapRef:
-            name: project-ai-ftsy-football-sum-config   
+            name: project-ai-ftsy-football-sum-config
+        env:
+        # Saved runs and the cached player reference. Named here as well as in
+        # the image so the mount below and the path the app writes to are one
+        # fact in one file.
+        - name: FFSUM_DATA_DIR
+          value: /data
+        volumeMounts:
+        - name: data
+          mountPath: /data
         lifecycle:
           preStop:
             exec:
               command: ["sleep", "5"]
         ports:
-        - containerPort: 7860
+        - containerPort: 8000
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: project-ai-ftsy-football-sum-data

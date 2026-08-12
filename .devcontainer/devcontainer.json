@@ -14,7 +14,7 @@
             ]
         }
     },
-    "forwardPorts": [7860],
+    "forwardPorts": [8000],
     "remoteUser": "root",
     "remoteEnv": {
         "UV_LINK_MODE": "copy",

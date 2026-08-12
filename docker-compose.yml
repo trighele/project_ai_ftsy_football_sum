@@ -1,16 +1,17 @@
-version: '3.8'
-
 services:
   app:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "9193:7860"  # host:container
+      - "9193:8000"  # host:container
     environment:
-      - HF_TOKEN=${HF_TOKEN}
-      - HF_NAMESPACE=${HF_NAMESPACE}
-      - HF_INFERENCE_ENDPOINT_NAME=${HF_INFERENCE_ENDPOINT_NAME}
-      - HF_INFERENCE_ENDPOINT_URL=${HF_INFERENCE_ENDPOINT_URL}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - CLAUDE_MODEL=${CLAUDE_MODEL}
+    # The same path the Deployment's PersistentVolumeClaim is mounted at, so
+    # saved runs and the cached player reference outlive the container here too.
+    volumes:
+      - ffsum-data:/data
+
+volumes:
+  ffsum-data:

@@ -1,40 +1,38 @@
 # Fantasy Football Podcast Summarizer
 
-This application automatically downloads, transcribes, and summarizes fantasy football podcasts using AI. It uses Whisper for transcription and Claude for generating structured summaries.
+Paste the YouTube URL of a fantasy football podcast episode and get back a structured Markdown summary — news items with fantasy sentiment, matchup analysis, player debates, waiver suggestions. The transcript comes from YouTube's own captions, and Claude writes the summary against a current NFL player reference so that a name in the audio is attributed to the right team, position, and standing.
 
 ## Features
 
-- Downloads audio from YouTube URLs
-- Splits audio into manageable chunks for processing
-- Transcribes audio using Hugging Face's Whisper model
-- Generates structured summaries using Claude AI
-- Web interface built with Gradio
+- Reads an episode's captions from YouTube — no audio download, no transcription step
+- Summarizes with Claude, streamed into the page as it is written
+- Hands Claude a player reference synced from [nflverse](https://github.com/nflverse): depth rank, ECR tier and rank, bye week, injury status
+- Saves every run: history, search, re-open, download as Markdown, delete
+- A Players page you can sort, filter, and search entirely in the browser
+- Server-rendered HTML with htmx; no build step to run the app
 
 ## Prerequisites
 
-- Python 3.11+
-- Poetry for dependency management
+- Python 3.14
+- [uv](https://docs.astral.sh/uv/) for dependency management
 - Docker (optional)
-- FFmpeg (for audio processing)
-- API Keys:
-  - Hugging Face API Token
-  - Anthropic API Key (for Claude)
+- An Anthropic API key
 
-## Environment Variables
+## Environment variables
 
-Create a `.env` file with the following variables:
+The application does not read a `.env` file itself — these have to be set in the real environment (your shell, Compose, or the Kubernetes ConfigMap and Secret). Locally, hand the file to uv instead: `uv run --env-file .env ffsum --reload`.
+
 ```env
-HF_TOKEN=your_huggingface_token
-HF_NAMESPACE=your_namespace
-HF_INFERENCE_ENDPOINT_NAME=your_endpoint_name
-HF_INFERENCE_ENDPOINT_URL=your_endpoint_url
-ANTHROPIC_API_KEY=your_anthropic_key
-CLAUDE_MODEL=claude-3-sonnet-20240229
+ANTHROPIC_API_KEY=your_anthropic_key   # required; without it the readiness pill reads "Not ready"
+CLAUDE_MODEL=claude-sonnet-5           # optional; this is the default
+FFSUM_DATA_DIR=./data                  # optional; directory holding the SQLite database
 ```
+
+`FFSUM_DATA_DIR` is a *directory*, not a file. It holds the saved runs and the cached player reference, and is the path a deployment mounts a volume at.
 
 ## Installation
 
-### Using Poetry (Local Development)
+### Local development
 
 1. Clone the repository:
 ```bash
@@ -42,35 +40,41 @@ git clone https://github.com/yourusername/project_ai_ftsy_football_sum.git
 cd project_ai_ftsy_football_sum
 ```
 
-2. Install dependencies using Poetry:
+2. Install dependencies:
 ```bash
-poetry install
+uv sync
 ```
 
 3. Run the application:
 ```bash
-poetry run python main.py
+uv run --env-file .env ffsum --reload
+```
+
+It listens on `http://127.0.0.1:8000` by default; `--host`, `--port`, and the `HOST`/`PORT` environment variables override that.
+
+4. Run the tests:
+```bash
+uv run pytest
 ```
 
 ### Using Docker
 
-1. Build and run using Docker Compose:
 ```bash
 docker-compose up --build
 ```
 
-The application will be available at `http://localhost:7860`
+The application will be available at `http://localhost:9193`, and its data lives in the `ffsum-data` named volume.
 
 ## Usage
 
-1. Open the web interface at `http://localhost:7860`
-2. Paste a YouTube URL of a fantasy football podcast
-3. Click "Transcribe Audio" to process the audio
-4. Click "Summarize Transcript" to generate a structured summary
+1. Open the web interface
+2. Paste a YouTube URL of a fantasy football podcast and press **Summarize**
+3. The transcript appears first; the summary streams in beneath it
+4. Find it again later under **History**, where it can be re-opened, downloaded as Markdown, or deleted
 
-## Output Format
+## Output format
 
-The summary is generated in Markdown format with the following sections:
+The summary is generated in Markdown with the following sections:
 - Date and Title
 - News Section (with Player/Team, News, and Sentiment)
 - Matchup Analysis
@@ -78,16 +82,21 @@ The summary is generated in Markdown format with the following sections:
 - Waiver Wire Suggestions
 - Additional relevant sections based on content
 
-## Project Structure
+## Project structure
 
 ```
 project_ai_ftsy_football_sum/
-├── main.py           # Main application code
-├── pyproject.toml    # Poetry dependency management
-├── requirements.txt  # Docker dependencies
-├── Dockerfile       # Docker configuration
-├── docker-compose.yml
-└── staging/         # Temporary directory for audio processing
+├── app.py            # FastAPI routes
+├── cli.py            # the `ffsum` console entry point
+├── config.py         # what the environment gets to decide
+├── container.py      # the three network edges: captions, nflverse, Claude
+├── services/         # transcripts, runs, player reference, summarization, storage
+├── templates/        # Jinja pages and htmx fragments
+├── static/           # generated CSS, htmx, vendored font, page scripts
+└── assets/           # Tailwind source for static/css/app.css
+docs/adr/             # architecture decision records
+deployment/           # Kubernetes manifests
+tests/                # HTTP-level tests, network blocked
 ```
 
 ## Contributing

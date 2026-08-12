@@ -14,17 +14,22 @@ The deploy workflow's Secret and ConfigMap variable lists are updated to drop th
 
 **Blocked by:** 07 and 09.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] The Gradio entrypoint module, the Postgres access module, and the audio staging directory are deleted.
-- [ ] Gradio and psycopg2 are removed from the dependency declaration; the lockfile is regenerated.
-- [ ] The pinned requirements file is deleted and nothing references it.
-- [ ] The image builds from a Python 3.14 slim base using `uv sync --frozen`.
-- [ ] ffmpeg, the build toolchain, and the compiler are removed from the image.
-- [ ] The served port is changed consistently across the application, Compose, the Kubernetes Service, the Deployment, and the port-forward reference.
-- [ ] A PersistentVolumeClaim manifest exists and is mounted at the configured data path in the Deployment.
-- [ ] Docker Compose mounts a named volume at the same data path.
-- [ ] The Hugging Face and Postgres variables are removed from the workflow's Secret and ConfigMap lists.
-- [ ] A repository-wide search finds no remaining reference to the Hugging Face endpoint, the Postgres connection variables, ffmpeg, or the staging path.
-- [ ] The image builds and the container serves the app end to end under Docker Compose.
-- [ ] No deploy is executed.
+- [x] The Gradio entrypoint module, the Postgres access module, and the audio staging directory are deleted.
+- [x] Gradio and psycopg2 are removed from the dependency declaration; the lockfile is regenerated.
+- [x] The pinned requirements file is deleted and nothing references it.
+- [x] The image builds from a Python 3.14 slim base using `uv sync --frozen`.
+- [x] ffmpeg, the build toolchain, and the compiler are removed from the image.
+- [x] The served port is changed consistently across the application, Compose, the Kubernetes Service, the Deployment, and the port-forward reference.
+- [x] A PersistentVolumeClaim manifest exists and is mounted at the configured data path in the Deployment.
+- [x] Docker Compose mounts a named volume at the same data path.
+- [x] The Hugging Face and Postgres variables are removed from the workflow's Secret and ConfigMap lists.
+- [x] A repository-wide search finds no remaining reference to the Hugging Face endpoint, the Postgres connection variables, ffmpeg, or the staging path.
+- [ ] The image builds and the container serves the app end to end under Docker Compose. **Not verified here — there is no Docker daemon in this dev container.** What was verified instead: `uv build` produces a wheel carrying the templates and static files, and the app serves `/` and `/history` under exactly the environment the image sets (`HOST=0.0.0.0`, `PORT=8000`, `FFSUM_DATA_DIR` on a mounted path), writing its SQLite file there. Someone with Docker should run `docker-compose up --build` before the deploy.
+- [x] No deploy is executed.
+
+**Notes:**
+
+- The port-forward reference did not need a value change: the systemd unit forwards the Service (3012) to the host (4012), and only the container port moved (7860 → 8000). The workflow's `env:` block now records all three ports and what each one is, so the next reader does not have to guess which is which.
+- `notebooks/nfl_extract.ipynb` — the ourlads.com scraper that fed the Postgres player tables — is left in place. It references none of the removed variables and is not part of the app runtime; deleting it is a separate call.
