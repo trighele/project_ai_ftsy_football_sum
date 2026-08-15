@@ -1,0 +1,19 @@
+{# The run went ahead on a player reference older than it wanted.
+
+   nflverse being unreachable costs accuracy, not the whole summary — but the
+   reader has to be told which, so the age is named rather than implied. Amber
+   rather than red: nothing failed, and there is a summary below this. #}
+{% import "macros.html" as macros %}
+<div
+  class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-6 py-5"
+  role="status"
+>
+  <p class="heading text-xs text-amber-300">Player reference is out of date</p>
+  <p class="mt-2 text-sm text-ink/90">
+    nflverse could not be reached, so this summary was written against the
+    {{ reference.season }} reference already cached here, synced
+    {{ reference.synced_label }}. Depth ranks and injury statuses may have moved
+    since — a trade or a Friday practice report would not be in it.
+  </p>
+  {{ macros.raw_error(detail) }}
+</div>

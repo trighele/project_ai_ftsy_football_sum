@@ -8,6 +8,14 @@ env:
   SERVICE_NAME: project-ai-ftsy-football-sum
   DEPLOYMENT_NAME: project-ai-ftsy-football-sum-deployment
   CONTAINER_NAME: project-ai-ftsy-football-sum-container
+  # Three ports, and they are not interchangeable: the container serves
+  # CONTAINER_PORT, the Service publishes KUBE_PORT and targets it, and the
+  # systemd port-forward unit exposes KUBE_PORT on the host as APP_PORT.
+  # Nothing below reads these — like the rest of this block they are a record
+  # of what is deployed, so the values live where the deploy is described.
+  # CONTAINER_PORT is the same port as the Deployment's containerPort, the
+  # Service's targetPort, and the image's PORT; change one, change all four.
+  CONTAINER_PORT: 8000
   KUBE_PORT: 3012
   APP_PORT: 4012
   NAMESPACE: project-ai-ftsy-football-sum
@@ -34,34 +42,16 @@ jobs:
 
       - name: Create/Update K8s Secrets and ConfigMaps
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_NAMESPACE: ${{ secrets.HF_NAMESPACE }}
-          HF_INFERENCE_ENDPOINT_NAME: ${{ secrets.HF_INFERENCE_ENDPOINT_NAME }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
-          HF_INFERENCE_ENDPOINT_URL: ${{ secrets.HF_INFERENCE_ENDPOINT_URL }}
-          PG_HOST: ${{ secrets.PG_HOST }}
-          PG_PORT: ${{ secrets.PG_PORT }}
-          PG_DB: ${{ vars.PG_DB }}
-          PG_USER: ${{ vars.PG_USER }}
-          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
         run: |
           kubectl create secret generic project-ai-ftsy-football-sum-secrets \
-            --from-literal=HF_TOKEN="${{ env.HF_TOKEN }}" \
-            --from-literal=HF_NAMESPACE="${{ env.HF_NAMESPACE }}" \
-            --from-literal=HF_INFERENCE_ENDPOINT_NAME="${{ env.HF_INFERENCE_ENDPOINT_NAME }}" \
             --from-literal=ANTHROPIC_API_KEY="${{ env.ANTHROPIC_API_KEY }}" \
-            --from-literal=HF_INFERENCE_ENDPOINT_URL="${{ env.HF_INFERENCE_ENDPOINT_URL }}" \
-            --from-literal=PG_HOST="${{ env.PG_HOST }}" \
-            --from-literal=PG_PORT="${{ env.PG_PORT }}" \
-            --from-literal=PG_PASSWORD="${{ env.PG_PASSWORD }}" \
             --dry-run=client -o yaml \
           | kubectl apply -n "${{ env.NAMESPACE }}" -f -
 
           kubectl create configmap project-ai-ftsy-football-sum-config \
             --from-literal=CLAUDE_MODEL="${{ env.CLAUDE_MODEL }}" \
-            --from-literal=PG_DB="${{ env.PG_DB }}" \
-            --from-literal=PG_USER="${{ env.PG_USER }}" \
             --dry-run=client -o yaml | kubectl apply -n "${{ env.NAMESPACE }}" -f -
 
 

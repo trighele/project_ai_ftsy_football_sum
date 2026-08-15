@@ -1,0 +1,74 @@
+[
+  {
+    "page_type": "redraft-overall",
+    "player": "Ja'Marr Chase",
+    "pos": "WR",
+    "team": "CIN",
+    "ecr": 1.8,
+    "bye": 6
+  },
+  {
+    "page_type": "redraft-overall",
+    "player": "Bijan Robinson",
+    "pos": "RB",
+    "team": "ATL",
+    "ecr": 3.28,
+    "bye": 11
+  },
+  {
+    "page_type": "redraft-overall",
+    "player": "Drake London",
+    "pos": "WR",
+    "team": "ATL",
+    "ecr": 20.0,
+    "bye": 11
+  },
+  {
+    "page_type": "redraft-overall",
+    "player": "Chase Brown",
+    "pos": "RB",
+    "team": "CIN",
+    "ecr": 25.0,
+    "bye": 6
+  },
+  {
+    "page_type": "redraft-overall",
+    "player": "Joe Burrow",
+    "pos": "QB",
+    "team": "CIN",
+    "ecr": 30.0,
+    "bye": 6
+  },
+  {
+    "page_type": "redraft-overall",
+    "player": "Michael Penix Jr.",
+    "pos": "QB",
+    "team": "ATL",
+    "ecr": 100.0,
+    "bye": 11
+  },
+  {
+    "page_type": "redraft-overall",
+    "player": "Younghoe Koo",
+    "pos": "K",
+    "team": "ATL",
+    "ecr": 140.0,
+    "bye": 11
+  },
+  {
+    "page_type": "redraft-overall",
+    "player": "Tyler Allgeier",
+    "pos": "RB",
+    "team": "ATL",
+    "ecr": 150.0,
+    "bye": 11
+  },
+  {
+    "page_type": "dynasty-overall",
+    "player": "Ja'Marr Chase",
+    "pos": "WR",
+    "team": "CIN",
+    "ecr": 400.0,
+    "bye": 6
+  }
+]

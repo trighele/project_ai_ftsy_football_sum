@@ -1,0 +1,25 @@
+{# What a run looks like while it is happening. The server hands this back the
+   moment a run is started, before anything is known about the episode;
+   `run.js` opens the event stream named here and writes each event into the
+   elements below. Every piece of markup it puts there is rendered by the
+   server too — this fragment is only the shape they land in. #}
+<div data-run-events="/runs/{{ run.token }}/events">
+  <p class="heading text-xs text-accent" data-run-status aria-live="polite">
+    Fetching captions&hellip;
+  </p>
+
+  <div class="mt-4" data-run-episode></div>
+
+  {# What the run went ahead on rather than what it wanted — a stale player
+     reference, so far. Above the summary, because it qualifies it. #}
+  <div class="empty:hidden mt-4" data-run-warning></div>
+
+  {% with summary = none %}
+    {% include "fragments/summary.html" %}
+  {% endwith %}
+
+  {# A run that stops says so here, below whatever it had already produced:
+     a transcript that arrived is worth keeping even when the summary never
+     did. #}
+  <div class="mt-4" data-run-failure></div>
+</div>

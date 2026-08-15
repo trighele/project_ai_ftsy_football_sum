@@ -1,0 +1,86 @@
+[
+  {
+    "gsis_id": "00-0038542",
+    "display_name": "Bijan Robinson",
+    "position": "RB",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0037746",
+    "display_name": "Tyler Allgeier",
+    "position": "RB",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0036916",
+    "display_name": "Drake London",
+    "position": "WR",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0039917",
+    "display_name": "Michael Penix Jr.",
+    "position": "QB",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0034746",
+    "display_name": "Younghoe Koo",
+    "position": "K",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0036900",
+    "display_name": "Ja'Marr Chase",
+    "position": "WR",
+    "latest_team": "CIN",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0036442",
+    "display_name": "Joe Burrow",
+    "position": "QB",
+    "latest_team": "CIN",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0039154",
+    "display_name": "Chase Brown",
+    "position": "RB",
+    "latest_team": "CIN",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0034761",
+    "display_name": "Ray-Ray McCloud",
+    "position": "WR",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0035260",
+    "display_name": "Kaden Elliss",
+    "position": "LB",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0032085",
+    "display_name": "Bradley Pinion",
+    "position": "P",
+    "latest_team": "ATL",
+    "status": "ACT"
+  },
+  {
+    "gsis_id": "00-0000001",
+    "display_name": "Preseason Placeholder",
+    "position": "RB",
+    "latest_team": "ATL",
+    "status": "CUT"
+  }
+]

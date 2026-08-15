@@ -1,0 +1,16 @@
+{# How a run that could not finish is put to the reader.
+
+   One panel whatever stopped the run, and one message per kind of failure:
+   what broke, and what to do about it. The raw error goes behind the toggle
+   rather than into the message — a reader who wants it can open it, and one
+   who does not is not made to read a stack trace to learn that an episode has
+   no captions yet. #}
+{% import "macros.html" as macros %}
+<div
+  class="rounded-lg border border-red-500/40 bg-red-500/10 px-6 py-5"
+  role="alert"
+>
+  <p class="heading text-xs text-red-300">Run stopped</p>
+  <p class="mt-2 text-sm text-ink/90">{{ message }}</p>
+  {{ macros.raw_error(detail) }}
+</div>

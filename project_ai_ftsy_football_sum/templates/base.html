@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Fantasy Football Podcast Summarizer{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}" />
+    <script defer src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+    {% block scripts %}{% endblock %}
+  </head>
+  <body class="min-h-full bg-surface text-ink antialiased">
+    <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6">
+      <header class="flex items-center justify-between gap-6 border-b border-line py-5">
+        <a href="/" class="flex items-baseline gap-2">
+          <span class="heading text-lg text-ink">Fantasy Football</span>
+          <span class="heading text-lg text-accent">Podcast Summarizer</span>
+        </a>
+        <nav class="flex items-center gap-1" aria-label="Main">
+          {% set nav_items = [
+            ('home', 'Home', '/', true),
+            ('players', 'Players', '/players', true),
+            ('history', 'History', '/history', true),
+          ] %}
+          {% for key, label, href, available in nav_items %}
+            {% if available %}
+              <a
+                href="{{ href }}"
+                class="heading rounded px-3 py-1.5 text-xs {% if nav_active == key %}bg-accent/15 text-accent{% else %}text-muted hover:text-ink{% endif %}"
+                {% if nav_active == key %}aria-current="page"{% endif %}
+              >{{ label }}</a>
+            {% else %}
+              <span
+                class="heading cursor-not-allowed rounded px-3 py-1.5 text-xs text-muted/45"
+                aria-disabled="true"
+                title="{{ label }} page is not built yet"
+              >{{ label }}</span>
+            {% endif %}
+          {% endfor %}
+        </nav>
+      </header>
+
+      <main class="flex-1 py-12">{% block content %}{% endblock %}</main>
+
+      <footer class="flex items-center justify-between border-t border-line py-5 text-xs text-muted">
+        <span>Transcripts from YouTube captions. Player reference from nflverse.</span>
+        <span hx-get="/fragments/status" hx-trigger="load" hx-swap="innerHTML">
+          <span class="text-muted/60">Checking&hellip;</span>
+        </span>
+      </footer>
+    </div>
+  </body>
+</html>

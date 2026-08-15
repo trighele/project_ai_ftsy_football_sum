@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block title %}{{ run.title }} &middot; Fantasy Football Podcast Summarizer{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-3xl">
+    <div class="flex flex-wrap items-baseline justify-between gap-3">
+      <a href="/" class="heading text-xs text-muted hover:text-accent">&larr; Back</a>
+      <div class="flex items-baseline gap-3">
+        {# Which season's players this was written against is part of what the
+           summary means: in the preseason it is last autumn's depth charts. #}
+        {% if run.season %}
+          <p class="heading text-[0.65rem] tabular-nums text-muted/70">
+            {{ run.season }} player reference
+          </p>
+          <span class="text-muted/40">&middot;</span>
+        {% endif %}
+        <p class="heading text-[0.65rem] tabular-nums text-muted/70">
+          Summarized {{ run.created_at_label }}
+        </p>
+        {{ macros.download_link(run) }}
+      </div>
+    </div>
+
+    {# The same panels the run rendered when it was live: a reopened run is
+       not a lesser view of the episode. #}
+    <div class="mt-4">
+      {% with episode = run %}
+        {% include "fragments/episode.html" %}
+      {% endwith %}
+    </div>
+
+    {% with summary = run.summary %}
+      {% include "fragments/summary.html" %}
+    {% endwith %}
+
+    <p class="mt-6 text-xs text-muted">
+      Source:
+      <a href="{{ run.url }}" rel="noreferrer" class="text-accent hover:underline">
+        {{ run.url }}
+      </a>
+    </p>
+  </section>
+{% endblock %}

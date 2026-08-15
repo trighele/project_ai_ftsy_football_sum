@@ -1,0 +1,64 @@
+/* Tailwind source. Compiled to ../static/css/app.css by scripts/build-css.sh.
+   Edit this file, never the compiled output. */
+
+/* `source(none)` turns off automatic content detection — without it Tailwind
+   scans the whole repo (docs, specs, notebooks) and emits utilities no
+   template uses. The templates are the only source of class names. */
+@import "tailwindcss" source(none);
+
+@source "../templates/**/*.html";
+
+@theme {
+  /* Near-black surfaces, lifted a step at a time rather than by shadow. */
+  --color-surface: #08090a;
+  --color-panel: #101315;
+  --color-panel-raised: #171b1e;
+  --color-line: #262b30;
+
+  --color-ink: #e9edf0;
+  --color-muted: #8b959d;
+
+  /* One saturated accent. Everything else is greyscale. */
+  --color-accent: #00e07a;
+  --color-accent-bright: #4dffa6;
+  --color-accent-ink: #05170e;
+
+  --font-display:
+    "Oswald", "Roboto Condensed", "Liberation Sans Narrow", "Arial Narrow",
+    ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  /* Oswald (SIL OFL 1.1), latin subset, variable weight axis. Vendored into
+     static/fonts so headings are genuinely condensed everywhere and nothing
+     is fetched from a CDN. */
+  @font-face {
+    font-family: "Oswald";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("/static/fonts/oswald-latin-var.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+      U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+      U+2215, U+FEFF, U+FFFD;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  /* Data tables read as columns of figures, so their digits line up. */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Condensed uppercase, used for headings, nav, buttons and column labels. */
+@utility heading {
+  font-family: var(--font-display);
+  font-stretch: 75%;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

@@ -9,5 +9,5 @@ spec:
   ports:
     - protocol: TCP
       port: 3012
-      targetPort: 7860
+      targetPort: 8000
   type: NodePort

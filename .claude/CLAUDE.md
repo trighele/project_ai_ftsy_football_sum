@@ -1,0 +1,68 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+A FastAPI app that takes a YouTube URL of a fantasy football podcast, reads the episode's captions, and produces a structured Markdown summary using Claude. The summary is enriched with a player reference synced from nflverse so Claude can correctly attribute news to the right player. It is the whole application: the Gradio app and its Postgres player pipeline were deleted at the 2026 cutover (see `.scratch/2026-rebuild/`, ADR-0001 and ADR-0002).
+
+## Commands
+
+Dependencies are managed with **uv**. There is no Poetry, and no `requirements.txt` — the image installs from `uv.lock`.
+
+```bash
+# install deps (including the dev group)
+uv sync
+
+# run the app (console script; --host/--port/--reload, or HOST/PORT env vars)
+uv run ffsum --reload
+
+# run it against a real Claude — the app never loads .env itself, so uv does it
+uv run --env-file .env ffsum --reload
+
+# run the test suite
+uv run pytest
+
+# recompile the Tailwind stylesheet after editing templates or assets/tailwind.css
+./scripts/build-css.sh
+
+# run in a container (builds the image, exposes the UI on host port 9193 -> container 8000)
+docker-compose up --build
+```
+
+`project_ai_ftsy_football_sum/static/css/app.css` is **generated** — edit `assets/tailwind.css` and rebuild. It is committed deliberately so neither the Docker image nor a plain `uv run` needs Node; `scripts/build-css.sh` downloads the Tailwind standalone CLI into the gitignored `.tools/`. `static/js/htmx.min.js` (official dist) and `static/fonts/oswald-latin-var.woff2` (SIL OFL, licence alongside it) are vendored for the same reason. There are no CDN references anywhere in the templates or the stylesheet.
+
+The three network edges (captions, nflverse, Claude) resolve through `container.py` and nothing else, and all three are now wired (`container.UNWIRED_EDGES` is empty). The `captions` edge is everything the app asks YouTube for — caption tracks via `youtube-transcript-api` *and* title/upload-date via `yt-dlp`, plus the oEmbed fallback — all behind one object (`services/youtube.py`), so there is one thing to fake and one thing to fail when YouTube is unhappy. The `nflverse` edge (`services/nflverse.py`) is four `nflreadpy` calls and nothing else; it is the only place a Polars frame exists. The `claude` edge (`services/claude.py`) is one streamed summarization request; it deliberately refuses to build without credentials so the readiness pill reports a missing `ANTHROPIC_API_KEY` rather than a run failing halfway.
+
+A run is started by `POST /runs`, which returns immediately with a panel naming the run's event stream. The work happens in an in-process background task (`services/runs.py`, run on a worker thread because every edge is a blocking library) and progress reaches the browser as Server-Sent Events on `GET /runs/{token}/events`: `stage` transitions, the rendered `transcript` panel, a `warning` when the run is going ahead on less than it wanted, `summary` text a delta at a time, and exactly one terminal `done` or `failed` carrying an error kind. Those kinds live in `services/failures.py` and nowhere else — six a reader can act on (`invalid_url`, `no_captions`, `video_unavailable`, `youtube_blocked`, `nflverse`, `claude`) plus `unknown` for one that fits none of them, each with its own message and with the underlying error travelling alongside it behind a disclosure toggle. Which kind a YouTube failure is gets read off the exception's class name first, and off its text only when no name is recognised, because `youtube-transcript-api` opens every one of its errors with the same paragraph: "no captions", "this video is private", and "you have been rate limited" are one string and three different things to tell somebody. The phrases it falls back on are only ones a person would write about the thing they point at — a kind guessed off a stray "unavailable" is worse than `unknown`, which at least shows the error rather than hiding it behind confident advice. Events are buffered per run, because the browser starts a run and follows it in two separate requests. An in-flight run does not survive a restart; there is no queue and no worker process. `static/js/run.js` is one of the two pieces of client-side code (`players.js` is the other) — it moves server-rendered fragments into place and keeps the Summarize button disabled until the run ends.
+
+What Claude is handed is built in `services/summarize.py` and nowhere else, as a `SummaryRequest` that is the whole of what the edge receives — so `tests/fakes.py`'s recording fake can be asserted on byte for byte, which is what `tests/test_player_reference_prompt.py` does. The system prompt is two blocks: the output contract, then the player reference as a Markdown table with the season named and depth rank, ECR tier, and ECR rank as separate labelled columns, plus the paragraph telling Claude that depth rank and ECR tier do not imply one another. That second block carries `cache_control` and so must be byte-stable between runs — no sync time, no run identifier, nothing per-episode inside it; the transcript, title, and upload date all sit in the user turn. The table is a deliberately narrower slice than the Players page shows (`summarize.PROMPT_POSITIONS` at `DEPTH_RANK_LIMIT` or better, ~700 rows of ~2,800): the page is for exploring, the prompt is for accuracy per token. The season the reference resolved to is saved on the run and shown on its detail view, because in the preseason a summary is written against last autumn's depth charts.
+
+`GET /history` lists every saved run (the home page keeps only the five most recent), narrowed by a title search. The search box and a delete both swap in the same `fragments/history_list.html`, so the list markup exists once: `GET /fragments/history?q=` for live search, `DELETE /runs/{id}?q=` for a delete that comes back to the search it was made from. Delete is a real row deletion with no confirmation step. `GET /runs/{id}/download` hands over the run as Markdown; `services/download.py` builds that document with its own front matter — title, channel, upload date, source, summarized date — so the file stands on its own whatever Claude wrote at the top of the summary.
+
+`GET /players` shows the player reference, assembled in `services/players.py` from the four nflverse tables — depth charts for **depth rank**, players for identity, fantasy rankings for ECR rank and bye week, injuries for status. nflverse publishes no tier column, so **ECR tier** is derived from ECR rank (`players.TIER_SIZE`) — see ADR-0002. Depth rank and ECR tier are two different facts and are never collapsed into a field called `tier`; ADR-0002 exists because the old app did exactly that. Polars frames are converted to records in `_records` and nothing past it sees one. Season resolution starts at the current calendar season (nflverse rolls rosters over mid-March) and walks back until a season has depth charts, because in the preseason the current year has none — the resolved season travels with the reference and the page warns when it trails. The injury feed is the one table allowed to be missing: nflverse refuses a season that has not kicked off, and a blank status column is the correct answer there. The reference is cached in SQLite for 12 hours (`services/player_cache.py`, `players.CACHE_TTL`), synced on demand from **Sync now** (`POST /players/sync`, which re-renders `fragments/player_reference.html`) and automatically at the start of a run when stale. A sync that fails with something cached is not a failure — `ensure_reference` hands back a `ReferenceOutcome` saying why the reference is the older one, the run proceeds against it, and a `warning` event puts its age on the page above the summary it qualifies; a sync that fails with nothing cached ends the run with the `nflverse` kind.
+
+The Players page is explorable entirely in the browser: sort on any column, filter by any number of teams or positions, cut off below a depth rank, and search by name, with the filters narrowing each other rather than replacing each other. Every row of the reference is in the page already, so none of it is a round trip — the server writes each row's values onto its `<tr>` as `data-*` attributes and `static/js/players.js` reads them, which is why nothing there parses a cell. See ADR-0003 for why the rows are HTML rather than the JSON the spec called for. The script is delegated from the document rather than bound to the controls, so the section **Sync now** swaps in works without being wired up again.
+
+Saved runs live in one SQLite file (`services/store.py`), at `$FFSUM_DATA_DIR/ffsum.db` — a *directory* rather than a file path, because a deployment mounts one volume there and the cached player reference is already on it. `config.py` is the only place that path is decided; it defaults to `./data` (gitignored) and is `/data` in the image. The schema is created in the app's lifespan startup, not when the store is constructed, so importing `app.py` touches no disk. The store is not a container edge — it is local disk, and tests exercise the real thing against a `tmp_path`.
+
+Tests drive the app through `TestClient` with fakes registered on the container; an autouse fixture in `tests/conftest.py` blocks sockets, so a test that reaches the network fails rather than hangs. Another autouse fixture points `FFSUM_DATA_DIR` at a temporary directory, so no test can write into the working tree. `tests/fakes.py` holds the edge fakes and `tests/fixtures/*.json` the recorded payloads they serve. `tests/test_youtube_source.py` is the single exception to the HTTP-only seam: the yt-dlp metadata lookup and the oEmbed fallback are invisible from outside the app, so its collaborators are injected and asserted on directly.
+
+There is no linter config or CI check wired into this repo, and no type checker configured — `uv run pytest` is the whole gate. `.github/workflows/deployment.yml` is `workflow_dispatch`-only (manual) and deploys to a self-hosted k8s cluster; `.github/workflows/deploy-v2.yml` builds the image on GitHub's hosted runners and pushes it to `ghcr.io/<owner>/ffsum`. Which tags it writes depends on the trigger, and the whole rule is the `docker/metadata-action` block rather than a shell conditional: a push to `main` writes `latest` and a `sha-` tag, and a manual `workflow_dispatch` run writes one `dev-<YYYYMMDD>-<sha>` tag and nothing else. That split is a safety property, not a convenience — the deployed container follows `latest`, so a build of an unmerged branch cannot reach it, and the `sha-` tag is what you re-point at when a deploy goes wrong. Neither workflow is a PR gate.
+
+### Environment variables
+
+The app never calls `load_dotenv`, so these have to be set in the real environment (Compose, the k8s ConfigMap and Secret, or the shell). Locally, hand the repo-root `.env` to uv rather than to the app: `uv run --env-file .env ffsum --reload`.
+
+- `ANTHROPIC_API_KEY` — required for a run to get past the transcript. Without it the readiness pill reads "Not ready" and names `claude`.
+- `CLAUDE_MODEL` — optional. Defaults to `claude-sonnet-5`.
+- `FFSUM_DATA_DIR` — optional. Directory holding the SQLite database of saved runs and the cached player reference. Defaults to `./data`; the image sets it to `/data`, where both Compose and the Deployment mount a volume.
+- `HOST` / `PORT` — optional, read by the `ffsum` console script. Default `127.0.0.1:8000`; the image sets `0.0.0.0:8000`.
+
+### Deployment
+
+`deployment/*.yaml` are plain Kubernetes manifests (namespace, deployment, service, PVC) — not Helm. The image is a Python 3.14 slim base with `uv sync --frozen --no-dev`; it carries no ffmpeg and no compiler, because nothing in the app needs them. The Deployment pulls env vars from a `project-ai-ftsy-football-sum-secrets` Secret (`ANTHROPIC_API_KEY`) and a `project-ai-ftsy-football-sum-config` ConfigMap (`CLAUDE_MODEL`), and mounts `project-ai-ftsy-football-sum-data` at `/data`. Its update strategy is `Recreate`, because a ReadWriteOnce volume cannot be held by an old pod and a new one at once.
+
+Three ports, and they are not interchangeable: the container serves **8000** (Deployment `containerPort`, Service `targetPort`, the image's `PORT`), the Service publishes **3012**, and the systemd port-forward unit exposes that on the host as **4012**. All three are named in the workflow's `env:` block. Compose maps host **9193** to the container's 8000.
+
+The workflow builds the image, loads it into a local `kind` cluster, applies manifests, and restarts a systemd port-forward service — this is a self-hosted, single-node setup, not a generic cloud deploy pipeline. `notebooks/nfl_extract.ipynb` is a leftover of the Postgres era (it scrapes ourlads.com depth charts to CSV) and is not part of the app runtime.

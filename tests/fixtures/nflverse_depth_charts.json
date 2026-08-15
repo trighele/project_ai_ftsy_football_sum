@@ -1,0 +1,142 @@
+[
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Bijan Robinson",
+    "gsis_id": "00-0038542",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "RB",
+    "pos_slot": 11,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Tyler Allgeier",
+    "gsis_id": "00-0037746",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "RB",
+    "pos_slot": 11,
+    "pos_rank": 2
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Drake London",
+    "gsis_id": "00-0036916",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "WR",
+    "pos_slot": 1,
+    "pos_rank": 2
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Drake London",
+    "gsis_id": "00-0036916",
+    "pos_grp": "Special Teams",
+    "pos_abb": "PR",
+    "pos_slot": 4,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Michael Penix Jr.",
+    "gsis_id": "00-0039917",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "QB",
+    "pos_slot": 9,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Younghoe Koo",
+    "gsis_id": "00-0034746",
+    "pos_grp": "Special Teams",
+    "pos_abb": "PK",
+    "pos_slot": 1,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Casey Washington",
+    "gsis_id": null,
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "WR",
+    "pos_slot": 2,
+    "pos_rank": 3
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Ray-Ray McCloud",
+    "gsis_id": "00-0034761",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "WR",
+    "pos_slot": 3,
+    "pos_rank": 4
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Kaden Elliss",
+    "gsis_id": "00-0035260",
+    "pos_grp": "Base 3-4",
+    "pos_abb": "LB",
+    "pos_slot": 5,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-10T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Bradley Pinion",
+    "gsis_id": "00-0032085",
+    "pos_grp": "Special Teams",
+    "pos_abb": "P",
+    "pos_slot": 2,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-01T07:32:09Z",
+    "team": "ATL",
+    "player_name": "Preseason Placeholder",
+    "gsis_id": "00-0000001",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "RB",
+    "pos_slot": 11,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-09T07:32:09Z",
+    "team": "CIN",
+    "player_name": "Ja'Marr Chase",
+    "gsis_id": "00-0036900",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "WR",
+    "pos_slot": 1,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-09T07:32:09Z",
+    "team": "CIN",
+    "player_name": "Joe Burrow",
+    "gsis_id": "00-0036442",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "QB",
+    "pos_slot": 9,
+    "pos_rank": 1
+  },
+  {
+    "dt": "2026-08-09T07:32:09Z",
+    "team": "CIN",
+    "player_name": "Chase Brown",
+    "gsis_id": "00-0039154",
+    "pos_grp": "3WR 1TE",
+    "pos_abb": "RB",
+    "pos_slot": 11,
+    "pos_rank": 1
+  }
+]

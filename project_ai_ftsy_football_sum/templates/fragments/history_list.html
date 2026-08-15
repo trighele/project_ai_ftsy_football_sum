@@ -1,0 +1,44 @@
+{# Every saved run, or every one matching a search. Rendered inside the
+   History page and again on its own — as the search box is typed into, and
+   after a delete — so this markup exists once and replaces itself in place.
+
+   The row is a link and the controls sit beside it rather than inside it: a
+   button nested in an anchor is not a thing a browser can do anything sensible
+   with. #}
+{% import "macros.html" as macros %}
+<section id="history-list" class="mt-8">
+  {% if runs %}
+    <ul class="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+      {% for run in runs %}
+        <li class="flex items-center gap-3 pr-4 hover:bg-accent/5">
+          <a
+            href="/runs/{{ run.id }}"
+            class="min-w-0 flex-1 px-5 py-4 focus-visible:outline-none"
+          >
+            {{ macros.episode_line(run) }}
+          </a>
+          <span class="heading shrink-0 text-[0.65rem] tabular-nums text-muted/70">
+            Summarized {{ run.created_at_label }}
+          </span>
+          <span class="flex shrink-0 items-center gap-1">
+            {{ macros.download_link(run) }}
+            <button
+              type="button"
+              hx-delete="/runs/{{ run.id }}{% if query %}?q={{ query | urlencode }}{% endif %}"
+              hx-target="#history-list"
+              hx-swap="outerHTML"
+              class="heading rounded px-2 py-1 text-[0.65rem] text-muted hover:bg-red-500/15 hover:text-red-400"
+              title="Delete this run"
+            >Delete</button>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% elif query %}
+    <p class="rounded-lg border border-dashed border-line px-6 py-8 text-center text-sm text-muted/70">
+      No runs match &ldquo;{{ query }}&rdquo;.
+    </p>
+  {% else %}
+    {{ macros.no_runs_yet() }}
+  {% endif %}
+</section>

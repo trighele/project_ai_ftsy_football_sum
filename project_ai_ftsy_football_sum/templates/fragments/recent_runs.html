@@ -1,0 +1,27 @@
+{% import "macros.html" as macros %}
+{# The most recent saved runs. Rendered inline on the home page and fetched
+   again on its own once a run has made it stale, so this markup exists once
+   and replaces itself in place. #}
+<section id="recent-runs" class="mt-12">
+  <h2 class="heading text-xs text-muted">Recent runs</h2>
+
+  {% if recent_runs %}
+    <ul class="mt-3 divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+      {% for run in recent_runs %}
+        <li>
+          <a
+            href="/runs/{{ run.id }}"
+            class="flex items-baseline justify-between gap-4 px-5 py-4 hover:bg-accent/5 focus-visible:bg-accent/5 focus-visible:outline-none"
+          >
+            <span class="min-w-0">{{ macros.episode_line(run) }}</span>
+            <span class="heading shrink-0 text-[0.65rem] tabular-nums text-muted/70">
+              {{ run.created_at_label }}
+            </span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="mt-3">{{ macros.no_runs_yet() }}</div>
+  {% endif %}
+</section>

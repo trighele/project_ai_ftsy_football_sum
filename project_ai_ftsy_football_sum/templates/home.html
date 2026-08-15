@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="mx-auto max-w-3xl">
+    <h1 class="heading text-4xl leading-none text-ink sm:text-5xl">
+      Summarize an <span class="text-accent">episode</span>
+    </h1>
+    <p class="mt-4 max-w-xl text-sm text-muted">
+      Paste the YouTube URL of a fantasy football podcast episode. The
+      transcript comes from the episode&rsquo;s own captions; the summary is
+      written against a current NFL player reference.
+    </p>
+
+    <form
+      class="mt-8 flex flex-col gap-3 sm:flex-row"
+      action="/runs"
+      method="post"
+      data-run-form
+    >
+      <label class="sr-only" for="youtube_url">YouTube URL</label>
+      <input
+        id="youtube_url"
+        name="youtube_url"
+        type="url"
+        inputmode="url"
+        autocomplete="off"
+        placeholder="https://www.youtube.com/watch?v=&hellip;"
+        class="flex-1 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
+      />
+      <button
+        type="submit"
+        class="heading rounded-md bg-accent px-6 py-3 text-sm text-accent-ink hover:bg-accent-bright focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-accent/30 disabled:text-ink/50"
+      >
+        Summarize
+      </button>
+    </form>
+
+    <noscript>
+      <p class="mt-6 text-sm text-muted">
+        A summary arrives as it is written, over a live connection, so this
+        page needs JavaScript enabled.
+      </p>
+    </noscript>
+
+    <div id="episode" class="mt-6">
+      <div class="rounded-lg border border-dashed border-line px-6 py-12 text-center">
+        <p class="heading text-xs text-muted">No episode loaded</p>
+        <p class="mt-2 text-sm text-muted/70">
+          The transcript and summary will appear here.
+        </p>
+      </div>
+    </div>
+
+    {% include "fragments/recent_runs.html" %}
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script defer src="{{ url_for('static', path='/js/run.js') }}"></script>
+{% endblock %}
