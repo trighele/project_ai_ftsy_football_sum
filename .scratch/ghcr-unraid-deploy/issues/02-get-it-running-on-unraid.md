@@ -12,18 +12,18 @@ Once it is up, the app answers on 4301, a summarize run completes and is saved, 
 
 This ticket cannot be completed by an agent. Both the GHCR visibility setting and the Unraid Docker template are web forms on systems CI cannot reach.
 
-- [ ] The GHCR package for `ffsum` is public
-- [ ] The image pulls on the box with no `docker login`
-- [ ] An Unraid Docker template exists for the app, pointed at `ghcr.io/<owner>/ffsum:latest`
-- [ ] Host port 4301 maps to the container's 8000
-- [ ] Host path `/mnt/user/appdata/ffsum` maps to `/data`
-- [ ] `ANTHROPIC_API_KEY` is set as a template variable
-- [ ] `CLAUDE_MODEL` and `FFSUM_DATA_DIR` are set as template variables
-- [ ] The app answers in a browser on port 4301
-- [ ] The readiness pill reads ready, rather than naming a missing `ANTHROPIC_API_KEY`
-- [ ] A summarize run completes end to end and is saved
-- [ ] The SQLite database file is visible on the array at the mapped path
-- [ ] A saved run is still listed after the container is restarted
+- [X] The GHCR package for `ffsum` is public
+- [X] The image pulls on the box with no `docker login`
+- [X] An Unraid Docker template exists for the app, pointed at `ghcr.io/<owner>/ffsum:latest`
+- [X] Host port 4301 maps to the container's 8000
+- [X] Host path `/mnt/user/appdata/ffsum` maps to `/data`
+- [X] `ANTHROPIC_API_KEY` is set as a template variable
+- [X] `CLAUDE_MODEL` and `FFSUM_DATA_DIR` are set as template variables
+- [X] The app answers in a browser on port 4301
+- [X] The readiness pill reads ready, rather than naming a missing `ANTHROPIC_API_KEY`
+- [X] A summarize run completes end to end and is saved
+- [X] The SQLite database file is visible on the array at the mapped path
+- [X] A saved run is still listed after the container is restarted
 
 ## Notes
 

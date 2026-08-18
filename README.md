@@ -20,7 +20,7 @@ Paste the YouTube URL of a fantasy football podcast episode and get back a struc
 
 ## Environment variables
 
-The application does not read a `.env` file itself — these have to be set in the real environment (your shell, Compose, or the Kubernetes ConfigMap and Secret). Locally, hand the file to uv instead: `uv run --env-file .env ffsum --reload`.
+The application does not read a `.env` file itself — these have to be set in the real environment (your shell, Compose, or the Unraid template's variables). Locally, hand the file to uv instead: `uv run --env-file .env ffsum --reload`.
 
 ```env
 ANTHROPIC_API_KEY=your_anthropic_key   # required; without it the readiness pill reads "Not ready"
@@ -63,7 +63,7 @@ uv run pytest
 docker-compose up --build
 ```
 
-The application will be available at `http://localhost:9193`, and its data lives in the `ffsum-data` named volume.
+This builds and runs the image locally, distinct from the deployed instance. The application will be available at `http://localhost:9193`, and its data lives in the `ffsum-data` named volume.
 
 ## Usage
 
@@ -95,7 +95,6 @@ project_ai_ftsy_football_sum/
 ├── static/           # generated CSS, htmx, vendored font, page scripts
 └── assets/           # Tailwind source for static/css/app.css
 docs/adr/             # architecture decision records
-deployment/           # Kubernetes manifests
 tests/                # HTTP-level tests, network blocked
 ```
 

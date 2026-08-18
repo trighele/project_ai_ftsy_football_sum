@@ -12,12 +12,12 @@ This is the point of the entire effort. Everything before it publishes an image;
 
 This ticket cannot be completed by an agent. It requires reading Watchtower's configuration on the box and watching a live container restart.
 
-- [ ] Whether Watchtower is global or label-scoped is established, not assumed
-- [ ] If label-scoped, the container carries the Watchtower enable label
-- [ ] A change merged to `main` is visible in the running app without any manual step on the box
-- [ ] The update happens within one Watchtower poll interval
-- [ ] Saved runs survive the Watchtower-triggered restart
-- [ ] A `workflow_dispatch` build does **not** cause the running container to change
+- [X] Whether Watchtower is global or label-scoped is established, not assumed
+- [X] If label-scoped, the container carries the Watchtower enable label
+- [X] A change merged to `main` is visible in the running app without any manual step on the box
+- [X] The update happens within one Watchtower poll interval
+- [X] Saved runs survive the Watchtower-triggered restart
+- [X] A `workflow_dispatch` build does **not** cause the running container to change
 
 ## Notes
 

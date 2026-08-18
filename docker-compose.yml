@@ -8,8 +8,8 @@ services:
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - CLAUDE_MODEL=${CLAUDE_MODEL}
-    # The same path the Deployment's PersistentVolumeClaim is mounted at, so
-    # saved runs and the cached player reference outlive the container here too.
+    # The same path the Unraid template maps on the host, so saved runs and
+    # the cached player reference outlive the container here too.
     volumes:
       - ffsum-data:/data
 
