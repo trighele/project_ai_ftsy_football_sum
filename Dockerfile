@@ -25,7 +25,7 @@ COPY project_ai_ftsy_football_sum ./project_ai_ftsy_football_sum
 RUN uv sync --frozen --no-dev
 
 # Where saved runs and the cached player reference live. Compose and the
-# Kubernetes Deployment both mount a volume here; without one the data is still
+# Unraid template both mount a volume here; without one the data is still
 # written, it just does not survive the container.
 ENV FFSUM_DATA_DIR=/data
 VOLUME ["/data"]
