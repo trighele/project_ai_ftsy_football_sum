@@ -9,7 +9,7 @@ This app runs as one process against one SQLite file for one person. It used to 
 
 ## Consequences
 
-- There is no declarative record of the running system. The container's image, port mapping, volume mount, and environment variables exist only in Unraid's Docker template UI, which this repo cannot see or version — `.claude/CLAUDE.md`'s Deployment section is the closest thing to a record, and it has to be kept in sync by hand.
+- There is no *live* declarative record of the running system — the container's image, port mapping, volume mount, and environment variables are still defined only in Unraid's Docker template UI, which this repo cannot see or version. `docs/deploy/unraid-template.xml` is an exported snapshot of that template, committed so the deployment can be re-imported rather than reconstructed from memory, but it is only as current as its last export — changing the container in the Unraid UI does not update it.
 - There is no rollout status and no readiness gate. Watchtower restarts the container on its own poll interval; nothing confirms the new image is healthy before the old one is gone, and nothing reports back here when it happens.
 - There is no rollback beyond re-pointing the Unraid template's image field at an older `sha-` tag by hand and letting Watchtower, or a manual restart, pick it up. There is no automated revert.
 - For one process and one SQLite file serving one person, this is the right trade — the machinery removed cost more than the guarantees it bought. It is still a trade, which is why it is recorded here rather than left implicit.

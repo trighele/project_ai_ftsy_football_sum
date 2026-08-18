@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>ffsum-app</Name>
+  <Repository>ghcr.io/trighele/ffsum:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <MyMAC/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project/>
+  <ReadMe/>
+  <Overview/>
+  <Category/>
+  <WebUI/>
+  <TemplateURL/>
+  <Icon>https://cdn-icons-png.flaticon.com/256/1760/1760269.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>1786817745</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Watchtower Enable" Target="com.centurylinklabs.watchtower.enable" Default="" Mode="" Description="" Type="Label" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Host Path 1" Target="/data" Default="" Mode="rw" Description="" Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/ffsum</Config>
+  <Config Name="ANTHROPIC_API_KEY" Target="ANTHROPIC_API_KEY" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="CLAUDE_MODEL" Target="CLAUDE_MODEL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false">claude-sonnet-5</Config>
+  <Config Name="FFSUM_DATA_DIR" Target="FFSUM_DATA_DIR" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false">/data</Config>
+  <Config Name="Host Port 1" Target="8000" Default="" Mode="tcp" Description="" Type="Port" Display="always" Required="false" Mask="false">4301</Config>
+  <TailscaleStateDir/>
+</Container>
