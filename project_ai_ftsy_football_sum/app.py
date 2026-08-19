@@ -173,7 +173,7 @@ def create_app(
 
     @app.get("/history", response_class=HTMLResponse)
     def history(request: Request, q: str = Query(default="")) -> HTMLResponse:
-        """Every saved run, newest first, narrowed by the search term."""
+        """Every saved run, newest episode first, narrowed by the search term."""
         return templates.TemplateResponse(
             request,
             "history.html",

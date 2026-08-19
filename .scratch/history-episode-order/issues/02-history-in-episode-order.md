@@ -10,11 +10,11 @@ Alongside it, startup gains an idempotent schema reconcile: it reads the columns
 
 See [../spec.md](../spec.md).
 
-- [ ] History orders by upload date descending with unknown dates last, then creation time descending, then identifier descending
-- [ ] The search fragment and the post-delete list come back in the same order
-- [ ] The home page's recent list still orders by creation time
-- [ ] The two orderings are two separately named reads in the store, not one read with a flag
-- [ ] An index covers the episode ordering and is created idempotently on startup
-- [ ] Startup adds any column the runs table is missing, and is a no-op on a fresh database and on a second run
-- [ ] A store created with an older schema keeps its rows through the reconcile
-- [ ] Each History row still shows the episode's title, channel, upload date, and the date it was summarized
+- [x] History orders by upload date descending with unknown dates last, then creation time descending, then identifier descending
+- [x] The search fragment and the post-delete list come back in the same order
+- [x] The home page's recent list still orders by creation time
+- [x] The two orderings are two separately named reads in the store, not one read with a flag
+- [x] An index covers the episode ordering and is created idempotently on startup
+- [x] Startup adds any column the runs table is missing, and is a no-op on a fresh database and on a second run
+- [x] A store created with an older schema keeps its rows through the reconcile
+- [x] Each History row still shows the episode's title, channel, upload date, and the date it was summarized

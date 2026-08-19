@@ -57,6 +57,80 @@ def test_history_lists_the_most_recent_run_first(
     assert body.index("Episode 3") < body.index("Episode 2") < body.index("Episode 1")
 
 
+def test_history_orders_by_the_episodes_own_date_not_the_day_it_was_summarized(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    """Catching up on a backlog out of order must not scramble the list."""
+    run_titled(client, youtube, "July Episode", uploaded="20260703")
+    run_titled(client, youtube, "August Episode", uploaded="20260812")
+    run_titled(client, youtube, "June Episode", uploaded="20260619")
+
+    body = client.get("/history").text
+
+    assert (
+        body.index("August Episode")
+        < body.index("July Episode")
+        < body.index("June Episode")
+    )
+
+
+def test_a_run_whose_upload_date_never_resolved_sorts_to_the_bottom(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    """An unknown date is not a recent one, whenever the run happened."""
+    run_titled(client, youtube, "June Episode", uploaded="20260619")
+    run_titled(client, youtube, "Undated Episode", uploaded="")
+
+    body = client.get("/history").text
+
+    assert body.index("June Episode") < body.index("Undated Episode")
+
+
+def test_two_episodes_uploaded_the_same_day_fall_back_to_the_order_they_were_run(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    run_titled(client, youtube, "Morning Show", uploaded="20260812")
+    run_titled(client, youtube, "Evening Show", uploaded="20260812")
+
+    body = client.get("/history").text
+
+    assert body.index("Evening Show") < body.index("Morning Show")
+
+
+def test_a_search_returns_its_matches_in_episode_order(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    """Search is a filter over the list, not a differently ordered list."""
+    run_titled(client, youtube, "Waiver Wire July", uploaded="20260703")
+    run_titled(client, youtube, "Injury Report August", uploaded="20260812")
+    run_titled(client, youtube, "Waiver Wire August", uploaded="20260814")
+    run_titled(client, youtube, "Waiver Wire June", uploaded="20260619")
+
+    body = client.get("/history", params={"q": "waiver"}).text
+
+    assert "Injury Report August" not in body
+    assert (
+        body.index("Waiver Wire August")
+        < body.index("Waiver Wire July")
+        < body.index("Waiver Wire June")
+    )
+
+
+def test_deleting_a_run_returns_the_rest_in_episode_order(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    """A delete must not reshuffle the list the reader was looking at."""
+    run_titled(client, youtube, "July Episode", uploaded="20260703")
+    run_titled(client, youtube, "August Episode", uploaded="20260812")
+    run_titled(client, youtube, "June Episode", uploaded="20260619")
+    doomed = run_ids(client.get("/history").text)[1]
+
+    body = client.delete(f"/runs/{doomed}").text
+
+    assert "July Episode" not in body
+    assert body.index("August Episode") < body.index("June Episode")
+
+
 def test_a_history_row_says_what_the_episode_was_and_when_it_was_summarized(
     client: TestClient,
 ) -> None:

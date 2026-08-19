@@ -1,7 +1,9 @@
 """Everything the environment gets to decide, and the defaults when it doesn't.
 
-The data directory holds what the application must not lose on a restart: the
-saved runs, and later the cached player reference. It is a directory rather
+The data directory holds what the application would rather not lose on a
+restart: the saved runs and the cached player reference, which it must not
+lose, and the nflverse tables already downloaded, which it would only have to
+fetch again. It is a directory rather
 than a file path so that a deployment mounts a single volume here and the
 application needs no further configuration to put a second thing on it.
 """
@@ -31,6 +33,21 @@ def data_dir() -> Path:
 def database_path() -> Path:
     """The SQLite file the application reads and writes."""
     return data_dir() / DATABASE_FILENAME
+
+
+#: The subdirectory holding the nflverse tables already downloaded. A directory
+#: of its own inside the data directory, because it is a cache of somebody
+#: else's files rather than anything the application wrote: it can be emptied
+#: without losing a saved run.
+NFLVERSE_CACHE_DIRNAME = "nflverse-cache"
+
+
+def nflverse_cache_dir() -> Path:
+    """Where nflreadpy keeps the tables it has already downloaded.
+
+    Not created here — nflreadpy creates it when it first writes to it.
+    """
+    return data_dir() / NFLVERSE_CACHE_DIRNAME
 
 
 #: The environment variable naming the model. Kept from the Gradio app, so an

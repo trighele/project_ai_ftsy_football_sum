@@ -52,9 +52,23 @@ def run_episode(client: TestClient, url: str = EPISODE_URL) -> list[Event]:
     return follow(client, start(client, url))
 
 
-def run_titled(client: TestClient, youtube: FakeYouTubeSource, title: str) -> None:
-    """Run one episode that can be told apart from the others by its title."""
-    youtube.metadata = {**fixture("metadata"), "title": title}
+def run_titled(
+    client: TestClient,
+    youtube: FakeYouTubeSource,
+    title: str,
+    uploaded: str | None = None,
+) -> None:
+    """Run one episode that can be told apart from the others by its title.
+
+    `uploaded` is the episode's own upload date in the `YYYYMMDD` form yt-dlp
+    reports, for a test whose subject is the order episodes went up in rather
+    than the order they were summarized in. `""` is an episode whose upload
+    date never resolved.
+    """
+    metadata = {**fixture("metadata"), "title": title}
+    if uploaded is not None:
+        metadata["upload_date"] = uploaded
+    youtube.metadata = metadata
     run_episode(client)
 
 

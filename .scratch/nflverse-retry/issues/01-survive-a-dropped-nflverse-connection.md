@@ -8,13 +8,13 @@
 
 See [../spec.md](../spec.md).
 
-- [ ] A transient failure (connection reset, timeout, HTTP 5xx) is retried up to three attempts with growing, jittered waits
-- [ ] An HTTP 404 raises on the first attempt with no wait, and the library's out-of-range-season `ValueError` does the same
-- [ ] Three consecutive transient failures raise, and the last failure is the one the caller sees
-- [ ] Retry lives inside the nflverse edge; the module that interprets the tables and every existing fake are unchanged
-- [ ] The edge takes its loader and its sleep by injection, both defaulting to the real thing
-- [ ] The upstream filesystem cache is enabled from inside the edge at construction, pointed at a subdirectory of the configured data directory, with a duration matching the reference's staleness window
-- [ ] The HTTP timeout is raised above the library's 30-second default
-- [ ] A new direct test of the edge covers the cases above without waiting in real time
-- [ ] Every existing Players page and run test passes untouched
-- [ ] The reader-facing failure sentence and the `nflverse` failure kind are unchanged; the chained cause still appears under the disclosure toggle
+- [x] A transient failure (connection reset, timeout, HTTP 5xx) is retried up to three attempts with growing, jittered waits
+- [x] An HTTP 404 raises on the first attempt with no wait, and the library's out-of-range-season `ValueError` does the same
+- [x] Three consecutive transient failures raise, and the last failure is the one the caller sees
+- [x] Retry lives inside the nflverse edge; the module that interprets the tables and every existing fake are unchanged
+- [x] The edge takes its loader and its sleep by injection, both defaulting to the real thing
+- [x] The upstream filesystem cache is enabled from inside the edge at construction, pointed at a subdirectory of the configured data directory, with a duration matching the reference's staleness window
+- [x] The HTTP timeout is raised above the library's 30-second default
+- [x] A new direct test of the edge covers the cases above without waiting in real time
+- [x] Every existing Players page and run test passes untouched
+- [x] The reader-facing failure sentence and the `nflverse` failure kind are unchanged; the chained cause still appears under the disclosure toggle
