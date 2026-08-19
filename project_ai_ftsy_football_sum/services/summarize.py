@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from project_ai_ftsy_football_sum.services.players import (
+    FANTASY_POSITIONS,
     TIER_SIZE,
     PlayerReference,
     PlayerRow,
@@ -51,12 +52,6 @@ anything you cannot place.
 surname-only mention on the right player and to state a player's team and \
 position; do not contradict it.\
 """
-
-#: The positions a fantasy manager can actually start, and so the only ones
-#: worth paying for on every run. Everybody else on a depth chart is a
-#: long-snapper as far as a podcast is concerned. Team defences are not
-#: depth-chart rows, which is why there is no DST here.
-PROMPT_POSITIONS = frozenset({"QB", "RB", "FB", "WR", "TE", "K"})
 
 #: How far down each position's depth chart the reference goes. Below the
 #: third string a player is not being discussed on a fantasy podcast, and the
@@ -138,7 +133,7 @@ def prompt_rows(reference: PlayerReference) -> tuple[PlayerRow, ...]:
     return tuple(
         row
         for row in reference.rows
-        if row.position in PROMPT_POSITIONS
+        if row.position in FANTASY_POSITIONS
         and row.depth_rank is not None
         and row.depth_rank <= DEPTH_RANK_LIMIT
     )

@@ -54,6 +54,16 @@ RANKINGS_PAGE = "redraft-overall"
 #: 08's byte-stable prompt needs. See ADR-0002.
 TIER_SIZE = 12
 
+#: The positions a fantasy manager can actually start, and so the only ones
+#: worth paying for on every run. Everybody else on a depth chart is a
+#: long-snapper as far as a podcast is concerned. Team defences are not
+#: depth-chart rows, which is why there is no DST here; the fullback is in
+#: because a handful of them are startable and the prompt has always had it.
+#:
+#: It sits here, beside the reference it describes a slice of, so that the
+#: prompt and the page read one definition instead of a copy each.
+FANTASY_POSITIONS = frozenset({"QB", "RB", "FB", "WR", "TE", "K"})
+
 #: The depth-chart group a player is listed in for kick and punt duty. A wide
 #: receiver who returns punts is the first-string returner and the second-
 #: string receiver; the receiver line is the one that describes their week.
