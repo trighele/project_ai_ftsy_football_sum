@@ -39,6 +39,18 @@
     const summaryPanel = panel.querySelector("[data-run-summary-panel]");
     const summary = panel.querySelector("[data-run-summary]");
     const failure = panel.querySelector("[data-run-failure]");
+    // Every part of the summary panel the end of a run rearranges, in one
+    // place: they are found together, they are only ever used together, and
+    // the run is over by the time any of them is touched.
+    const summaryParts = {
+      actions: panel.querySelector("[data-run-summary-actions]"),
+      copy: panel.querySelector("[data-run-copy]"),
+      download: panel.querySelector("[data-run-download]"),
+      streamed: summary,
+      rendered: panel.querySelector("[data-run-summary-rendered]"),
+      source: panel.querySelector("[data-run-summary-source]"),
+      markdown: panel.querySelector("[data-run-summary-source] code"),
+    };
     const events = new EventSource(panel.dataset.runEvents);
 
     const finish = () => {
@@ -67,7 +79,9 @@
     });
 
     events.addEventListener("done", (event) => {
-      status.textContent = JSON.parse(event.data).label;
+      const done = JSON.parse(event.data);
+      status.textContent = done.label;
+      showFinishedSummary(summaryParts, done);
       refreshRecentRuns();
       finish();
     });
@@ -84,6 +98,28 @@
       status.textContent = "Lost contact with this run.";
       finish();
     };
+  }
+
+  // The run has ended: what has been read as it was written becomes what a
+  // saved run shows. The prose arrives rendered on the terminal event — the
+  // browser still builds no markup — and the text that was streamed becomes
+  // the source underneath it, so the disclosure holds exactly what was watched
+  // rather than a second copy of it. The identifier arrives on the same event,
+  // which is what lets Copy and Download point at a run that did not exist
+  // when this panel was rendered.
+  function showFinishedSummary(parts, done) {
+    parts.markdown.textContent = parts.streamed.textContent;
+    parts.rendered.innerHTML = done.summary_html;
+    parts.streamed.classList.add("hidden");
+    parts.rendered.classList.remove("hidden");
+    parts.source.classList.remove("hidden");
+    parts.download.href = done.download_href;
+    parts.copy.dataset.copyUrl = done.download_href;
+    parts.actions.classList.remove("hidden");
+    // `copy.js` has the document in hand before the click that asks for it —
+    // see the note there on why it cannot fetch one afterwards. Nothing else
+    // knows a copy control has just been given a URL, so this says so.
+    parts.copy.dispatchEvent(new CustomEvent("copy-url-set", { bubbles: true }));
   }
 
   // The run just made the recent list out of date. Ask the server for it

@@ -6,18 +6,18 @@ A live run keeps streaming plain text as Claude writes it and formats itself whe
 
 **Blocked by:** 06 — Build the stylesheet on Windows.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 See [../spec.md](../spec.md).
 
-- [ ] A saved run's page shows its summary rendered: headings, lists, emphasis, links, code, and tables
-- [ ] Raw HTML in a summary is rendered as visible text, never as markup
-- [ ] The Markdown source is present on the page in a disclosure, collapsed by default
-- [ ] A live run streams plain text, then swaps in the rendered summary when it ends, with no reload and no extra request
-- [ ] The rendered summary matches what the streamed pieces assembled to
-- [ ] A **Copy** control sits beside Download on the run page and on a finished live run, and hands over the same document as the download
-- [ ] Copy works where the modern clipboard API is unavailable, which is how the deployment is served
-- [ ] The button confirms it copied
-- [ ] Prose styling matches the existing palette, and a wide table scrolls inside its own container rather than pushing the page sideways
-- [ ] History rows gain no Copy control
-- [ ] The stylesheet is rebuilt and committed
+- [x] A saved run's page shows its summary rendered: headings, lists, emphasis, links, code, and tables
+- [x] Raw HTML in a summary is rendered as visible text, never as markup
+- [x] The Markdown source is present on the page in a disclosure, collapsed by default
+- [x] A live run streams plain text, then swaps in the rendered summary when it ends, with no reload and no extra request
+- [x] The rendered summary matches what the streamed pieces assembled to
+- [x] A **Copy** control sits beside Download on the run page and on a finished live run, and hands over the same document as the download
+- [x] Copy works where the modern clipboard API is unavailable, which is how the deployment is served
+- [x] The button confirms it copied
+- [x] Prose styling matches the existing palette, and a wide table scrolls inside its own container rather than pushing the page sideways
+- [x] History rows gain no Copy control
+- [x] The stylesheet is rebuilt and committed

@@ -3,19 +3,60 @@
    hidden when there is nothing in it yet; `run.js` reveals it on the first
    piece of text that arrives.
 
-   The summary is Markdown, and is shown as the Markdown Claude wrote — the
-   same text the download in ticket 05 hands over. #}
+   The summary is Markdown, and is shown as prose with its source underneath —
+   the same gesture as "show me the underlying error" on a failure. Both come
+   from the server: `summary_html` is rendered by `services/markdown.py` on the
+   saved run's page and carried on a live run's terminal event, and nothing in
+   the browser ever builds markup.
+
+   Three containers rather than one, because a live run is watched before it is
+   read: the streamed text is what arrives word by word, and the prose and the
+   source are what it becomes. `run.js` swaps between them when the run ends;
+   a saved run arrives with the swap already done. #}
+{% import "macros.html" as macros %}
+{# Hidden only when there is nothing to show *and* nothing to act on: a live
+   run before its first word. A saved run whose summary came back empty still
+   has a document to copy and to download, so its panel is not hidden away. #}
 <section
-  class="mt-4 rounded-lg border border-line bg-panel {% if not summary %}hidden{% endif %}"
+  class="mt-4 rounded-lg border border-line bg-panel {% if not (summary or run_id) %}hidden{% endif %}"
   data-run-summary-panel
 >
-  <header class="border-b border-line px-6 py-4">
+  <header class="flex flex-wrap items-baseline justify-between gap-3 border-b border-line px-6 py-4">
     <h2 class="heading text-xs text-muted">Summary</h2>
+    {# Copy and Download beside each other because they hand over the same
+       document. On a live run there is no identifier to point them at until
+       the run ends, so they arrive hidden and `run.js` fills them in. #}
+    <span
+      class="flex items-center gap-1 {% if not run_id %}hidden{% endif %}"
+      data-run-summary-actions
+    >
+      {{ macros.copy_button(run_id) }}
+      {{ macros.download_link(run_id, in_run_panel=true) }}
+    </span>
   </header>
   <div class="px-6 py-5">
+    {# What Claude is writing, as it writes it. Plain text until the run ends:
+       formatting arrives with the terminal event, which is the whole cost of
+       rendering on the server (ADR-0004). #}
     <div
-      class="text-sm leading-relaxed whitespace-pre-wrap text-ink/90"
+      class="text-sm leading-relaxed whitespace-pre-wrap text-ink/90 {% if summary_html %}hidden{% endif %}"
       data-run-summary
-    >{{ summary or "" }}</div>
+    ></div>
+
+    <div
+      class="prose-summary {% if not summary_html %}hidden{% endif %}"
+      data-run-summary-rendered
+    >{{ summary_html | safe }}</div>
+
+    {# The source, for the reader checking exactly what was written — the same
+       disclosure a failure puts its error behind. The page opens on the
+       readable version, so this is closed; a live run has nothing to put in it
+       until it ends, so until then it is not there at all. #}
+    {{ macros.raw_disclosure(
+         "Show the Markdown source",
+         summary or "",
+         hook="run-summary-source",
+         hidden=not summary_html,
+       ) }}
   </div>
 </section>

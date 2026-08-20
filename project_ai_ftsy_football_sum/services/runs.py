@@ -13,7 +13,8 @@ here in one place:
 - `transcript` — the episode panel, rendered, once the episode is resolved.
 - `warning`    — the run is going ahead on something less than it wanted.
 - `summary`    — a piece of the summary, in the order Claude wrote it.
-- `done`       — the run finished and was saved. Terminal.
+- `done`       — the run finished and was saved, with the summary rendered.
+                 Terminal.
 - `failed`     — the run did not finish, and why, by kind. Terminal.
 
 Exactly one terminal event ends every run. A stream that merely stops is
@@ -37,6 +38,7 @@ from project_ai_ftsy_football_sum.services.failures import (
     RunFailed,
     classify_youtube_error,
 )
+from project_ai_ftsy_football_sum.services.markdown import render_markdown
 from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
 from project_ai_ftsy_football_sum.services.players import (
     NflverseUnavailableError,
@@ -236,7 +238,7 @@ def perform(
             season=reference.season,
         )
     )
-    publish(_done_event(saved, elapsed))
+    publish(_done_event(saved, elapsed, summary))
 
 
 def _load_players(
@@ -376,14 +378,28 @@ def _warning_event(outcome: ReferenceOutcome) -> Event:
     )
 
 
-def _done_event(run: Run, elapsed: float) -> Event:
+def _done_event(run: Run, elapsed: float, summary: str) -> Event:
+    """That the run finished, and the summary it finished with as prose.
+
+    The rendered summary travels on the terminal event rather than being asked
+    for afterwards, so the run the reader has just watched formats itself
+    without a reload and without a second request. It is the whole of what was
+    streamed, rendered once — the pieces the browser assembled and this HTML
+    are the same summary or the page is lying about what it watched.
+
+    `download_href` is here for the same reason every fragment is: the server
+    says where a run's document lives, and Copy and Download are handed it
+    rather than each assembling a URL out of the identifier beside it.
+    """
     return Event(
         "done",
         {
             "run_id": run.id,
             "href": f"/runs/{run.id}",
+            "download_href": f"/runs/{run.id}/download",
             "duration_seconds": round(elapsed, 1),
             "label": f"Summarized in {elapsed:.1f}s",
+            "summary_html": render_markdown(summary),
         },
     )
 

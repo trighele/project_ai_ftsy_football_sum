@@ -24,6 +24,7 @@ from project_ai_ftsy_football_sum.services.download import (
     markdown_document,
 )
 from project_ai_ftsy_football_sum.services.failures import error_detail
+from project_ai_ftsy_football_sum.services.markdown import render_markdown
 from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
 from project_ai_ftsy_football_sum.services.players import (
     NflverseUnavailableError,
@@ -198,9 +199,16 @@ def create_app(
 
     @app.get("/runs/{run_id}", response_class=HTMLResponse)
     def run_detail(request: Request, run_id: int) -> HTMLResponse:
-        """Reopen a saved run: the episode it was, and what we made of it."""
+        """Reopen a saved run: the episode it was, and what we made of it.
+
+        The summary is rendered here rather than stored rendered, so a change
+        to how prose is produced reaches every run already saved.
+        """
+        run = _saved_run(request, run_id)
         return templates.TemplateResponse(
-            request, "run.html", {"run": _saved_run(request, run_id)}
+            request,
+            "run.html",
+            {"run": run, "summary_html": render_markdown(run.summary or "")},
         )
 
     @app.get("/runs/{run_id}/download", response_class=PlainTextResponse)

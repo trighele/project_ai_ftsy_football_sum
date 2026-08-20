@@ -6,11 +6,11 @@ Nothing about the application changes. The proof is that running it produces the
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 See [../spec.md](../spec.md).
 
-- [ ] The script runs to completion in Git Bash on Windows and writes the stylesheet
-- [ ] Running it with no source changes leaves the committed stylesheet byte-identical
-- [ ] The Linux and macOS paths are unchanged
-- [ ] The downloaded binary still lands in the ignored tools directory and is not committed
+- [x] The script runs to completion in Git Bash on Windows and writes the stylesheet
+- [x] Running it with no source changes leaves the committed stylesheet byte-identical
+- [x] The Linux and macOS paths are unchanged
+- [x] The downloaded binary still lands in the ignored tools directory and is not committed
