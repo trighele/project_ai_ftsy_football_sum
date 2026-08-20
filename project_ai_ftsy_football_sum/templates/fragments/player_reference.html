@@ -93,7 +93,7 @@
 
         <p class="text-xs text-muted">
           Showing
-          <span data-player-shown class="tabular-nums text-ink">{{ reference.rows | length }}</span>
+          <span data-player-shown class="tabular-nums text-ink">{{ reference.default_shown }}</span>
           of {{ reference.rows | length }} players
         </p>
 
@@ -104,9 +104,23 @@
         >Clear</button>
       </div>
 
+      {# The buckets first, then the positions inside them, then the teams:
+         which half of the league is on show is the question a reader answers
+         before any narrowing within it. The position toggles are grouped under
+         the same two labels as the toggles above them, so which positions a
+         bucket governs is visible rather than remembered. A tick inside a
+         bucket that is off does not turn it on — the bucket toggle is the one
+         thing that decides that. #}
       <div class="mt-5 space-y-4">
+        {{ macros.bucket_toggles(reference.buckets) }}
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          {% for bucket in reference.buckets %}
+            {{ macros.filter_facet("position", bucket.label, bucket.positions) }}
+          {% endfor %}
+        </div>
+
         {{ macros.filter_facet("team", "Teams", reference.teams) }}
-        {{ macros.filter_facet("position", "Positions", reference.positions) }}
       </div>
     </section>
 
@@ -128,18 +142,27 @@
           {# Each row carries the values the filters and the sort read, so the
              script never parses a cell. A value the reference does not have is
              an absent attribute rather than an empty one: it filters out and
-             sorts last, which "" would not. #}
+             sorts last, which "" would not.
+
+             A row outside the buckets the page opens on arrives `hidden`, by
+             the same attribute the script hides one with. The default view is
+             therefore rendered rather than arranged after the fact: the
+             section **Sync now** swaps in comes back narrowed without anything
+             re-running, and a page whose script has not arrived yet does not
+             show every linebacker under a toggle reading "Fantasy positions". #}
           {% for row in reference.rows %}
             <tr
               data-player-row
               data-player-name="{{ row.player_name | lower }}"
               {% if row.team %}data-team="{{ row.team }}"{% endif %}
               {% if row.position %}data-position="{{ row.position }}"{% endif %}
+              data-bucket="{{ row.bucket }}"
               {% if row.depth_rank is not none %}data-depth-rank="{{ row.depth_rank }}"{% endif %}
               {% if row.ecr_tier is not none %}data-ecr-tier="{{ row.ecr_tier }}"{% endif %}
               {% if row.ecr_rank is not none %}data-ecr-rank="{{ row.ecr_rank }}"{% endif %}
               {% if row.bye_week is not none %}data-bye-week="{{ row.bye_week }}"{% endif %}
               {% if row.injury_status %}data-injury-status="{{ row.injury_status }}"{% endif %}
+              {% if not row.shown_by_default %}hidden{% endif %}
               class="hover:bg-accent/5"
             >
               <td class="px-4 py-2 text-ink">{{ row.player_name }}</td>

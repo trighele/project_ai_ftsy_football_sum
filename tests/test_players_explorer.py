@@ -17,6 +17,10 @@ import re
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from project_ai_ftsy_football_sum.services.players import (
+    FANTASY_BUCKET,
+    OTHER_BUCKET,
+)
 from tests.test_players_page import COLUMNS, page
 
 #: The columns whose values are numbers, and so sort as numbers rather than as
@@ -39,6 +43,26 @@ def filter_values(body: str, facet: str) -> list[str]:
         rf'data-player-filter="{facet}"[^>]*?value="([^"]*)"',
         body,
     )
+
+
+def facet_strip(body: str, label: str) -> str:
+    """One labelled strip of filter toggles, and no part of any other."""
+    found = re.search(
+        rf"<fieldset[^>]*>\s*<legend[^>]*>\s*{re.escape(label)}\s*</legend>.*?</fieldset>",
+        body,
+        re.S,
+    )
+    assert found is not None, f"there is no {label} group"
+    return found.group(0)
+
+
+def bucket_toggle(body: str, bucket: str) -> str:
+    """The `<input>` for one of the two bucket toggles."""
+    found = re.search(
+        rf'<input[^>]*data-player-filter="bucket"\s*value="{bucket}"[^>]*>', body, re.S
+    )
+    assert found is not None, f"there is no {bucket} bucket toggle"
+    return found.group(0)
 
 
 def controls(body: str) -> str:
@@ -143,8 +167,21 @@ def test_positions_filter_as_a_multi_select(client: TestClient, app: FastAPI) ->
         {row.position for row in app.state.players.load().rows if row.position}
     )
 
-    assert filter_values(body, "position") == positions
+    assert sorted(filter_values(body, "position")) == positions
     assert "RB" in positions and "K" in positions
+
+
+def test_the_position_toggles_are_grouped_under_their_two_buckets(
+    client: TestClient,
+) -> None:
+    """Which positions a bucket governs is on the page, not remembered."""
+    strip = controls(page(client))
+
+    fantasy = filter_values(facet_strip(strip, "Fantasy positions"), "position")
+    other = filter_values(facet_strip(strip, "Everything else"), "position")
+
+    assert fantasy == ["K", "QB", "RB", "WR"]
+    assert other == ["LB", "P"]
 
 
 def test_the_filters_are_checkboxes_so_they_combine(client: TestClient) -> None:
@@ -171,13 +208,17 @@ def test_a_name_search_narrows_the_table(client: TestClient) -> None:
     assert "data-player-search" in strip
 
 
-def test_the_count_of_what_is_showing_is_on_the_page(
+def test_the_count_of_what_is_showing_is_the_default_view(
     client: TestClient, app: FastAPI
 ) -> None:
+    """The count is of the rows the page arrived showing, not of all of them."""
     body = page(client)
-    total = len(app.state.players.load().rows)
+    rows = app.state.players.load().rows
+    fantasy = [row for row in rows if row.bucket == FANTASY_BUCKET]
+    assert 0 < len(fantasy) < len(rows), "the fixture cannot tell the two apart"
 
-    assert re.search(rf"data-player-shown[^>]*>\s*{total}\s*<", body)
+    assert re.search(rf"data-player-shown[^>]*>\s*{len(fantasy)}\s*<", body)
+    assert f"of {len(rows)} players" in body
 
 
 def test_the_filters_can_be_cleared(client: TestClient) -> None:
@@ -222,3 +263,81 @@ def test_a_synced_reference_comes_back_with_its_controls(client: TestClient) -> 
     assert "data-player-search" in body
     assert 'data-player-filter="team"' in body
     assert "data-player-row" in body
+
+
+# --- Position buckets ------------------------------------------------------
+
+
+def test_every_row_declares_which_bucket_its_position_falls_in(
+    client: TestClient,
+) -> None:
+    """The bucket is a value the server wrote, like every other one here."""
+    body = page(client)
+
+    assert f'data-bucket="{FANTASY_BUCKET}"' in row_tag(body, "Bijan Robinson")
+    assert f'data-bucket="{OTHER_BUCKET}"' in row_tag(body, "Kaden Elliss")
+
+
+def test_the_bucket_comes_from_the_position_not_the_depth_charts_group(
+    client: TestClient,
+) -> None:
+    """A kicker and a punter share a group column and not a bucket.
+
+    Both are listed under "Special Teams" — that column names the formation a
+    player is on the field in, which cannot answer whether anybody can start
+    them.
+    """
+    body = page(client)
+
+    assert f'data-bucket="{FANTASY_BUCKET}"' in row_tag(body, "Younghoe Koo")
+    assert f'data-bucket="{OTHER_BUCKET}"' in row_tag(body, "Bradley Pinion")
+
+
+def test_the_page_opens_on_fantasy_positions(client: TestClient) -> None:
+    """The default is in the markup, so a page that arrives before its script
+    still shows what it meant to."""
+    strip = controls(page(client))
+
+    assert "checked" in bucket_toggle(strip, FANTASY_BUCKET)
+    assert "checked" not in bucket_toggle(strip, OTHER_BUCKET)
+
+
+def test_a_synced_reference_comes_back_on_fantasy_positions(
+    client: TestClient,
+) -> None:
+    """**Sync now** replaces the whole section, so it has to arrive as the page
+    did rather than dumping every linebacker back on show."""
+    page(client)
+
+    body = html.unescape(client.post("/players/sync").text)
+
+    assert "checked" in bucket_toggle(body, FANTASY_BUCKET)
+    assert "checked" not in bucket_toggle(body, OTHER_BUCKET)
+    assert f'data-bucket="{OTHER_BUCKET}"' in row_tag(body, "Kaden Elliss")
+
+
+def test_the_rows_outside_the_default_buckets_arrive_hidden(
+    client: TestClient,
+) -> None:
+    """The default view is rendered, not arranged afterwards.
+
+    The checked toggles are only half of it: a page whose script has not run
+    yet — and the section **Sync now** swaps in, which nothing re-narrows —
+    would otherwise say "Fantasy positions" above every linebacker in the
+    league.
+    """
+    body = page(client)
+
+    assert " hidden" in row_tag(body, "Kaden Elliss")
+    assert " hidden" not in row_tag(body, "Bijan Robinson")
+
+
+def test_a_synced_reference_comes_back_showing_the_default_view(
+    client: TestClient,
+) -> None:
+    page(client)
+
+    body = html.unescape(client.post("/players/sync").text)
+
+    assert " hidden" in row_tag(body, "Bradley Pinion")
+    assert " hidden" not in row_tag(body, "Younghoe Koo")

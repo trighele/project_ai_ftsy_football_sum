@@ -64,6 +64,23 @@ TIER_SIZE = 12
 #: prompt and the page read one definition instead of a copy each.
 FANTASY_POSITIONS = frozenset({"QB", "RB", "FB", "WR", "TE", "K"})
 
+#: The two buckets every position falls in, and what the Players page calls
+#: them. Two rather than three: an offence/defence/special-teams split was
+#: considered and rejected, because the question a reader is asking is "can I
+#: start this player", and a guard and a defensive end fall the same side of
+#: it.
+FANTASY_BUCKET = "fantasy"
+OTHER_BUCKET = "other"
+BUCKET_LABELS: Mapping[str, str] = {
+    FANTASY_BUCKET: "Fantasy positions",
+    OTHER_BUCKET: "Everything else",
+}
+
+#: The buckets the Players page opens on. Everybody else is one toggle away —
+#: carried, rendered, and one click from being on show, but not in the way of
+#: the question the page is usually opened to answer.
+DEFAULT_BUCKETS = frozenset({FANTASY_BUCKET})
+
 #: The depth-chart group a player is listed in for kick and punt duty. A wide
 #: receiver who returns punts is the first-string returner and the second-
 #: string receiver; the receiver line is the one that describes their week.
@@ -76,6 +93,18 @@ _SLOT_POSITIONS: Mapping[str, str] = {"PK": "K", "PR": "WR", "KR": "WR", "H": "P
 #: Name suffixes dropped before matching a depth-chart name to a ranking; the
 #: two sources disagree about them more often than they agree.
 _NAME_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv", "v"})
+
+
+def position_bucket(position: str | None) -> str:
+    """Which bucket a player's position puts them in.
+
+    Read off the position and nothing else: the depth chart's own group column
+    holds formation names — "3WR 1TE", "Base 3-4", "Special Teams" — which say
+    what package a player is on the field for, not whether anybody can start
+    them. A kicker and a punter share that column and are on opposite sides of
+    this question.
+    """
+    return FANTASY_BUCKET if position in FANTASY_POSITIONS else OTHER_BUCKET
 
 
 class PlayerDataSource(Protocol):
@@ -124,6 +153,36 @@ class PlayerRow:
     bye_week: int | None = None
     injury_status: str | None = None
 
+    @property
+    def bucket(self) -> str:
+        """Which half of the page this player is in. See `position_bucket`."""
+        return position_bucket(self.position)
+
+    @property
+    def shown_by_default(self) -> bool:
+        """Whether this player is on show before a reader touches a control."""
+        return self.bucket in DEFAULT_BUCKETS
+
+
+@dataclass(frozen=True)
+class PositionBucket:
+    """One bucket as the Players page offers it: a toggle and its positions.
+
+    The page's two labelled columns of position toggles, and the pair of
+    toggles above them, are these same two things read twice — which is what
+    keeps a position from appearing under a heading whose toggle does not
+    govern it.
+    """
+
+    name: str
+    label: str
+    positions: tuple[str, ...]
+
+    @property
+    def shown_by_default(self) -> bool:
+        """Whether the page opens with this bucket on show."""
+        return self.name in DEFAULT_BUCKETS
+
 
 @dataclass(frozen=True)
 class PlayerReference:
@@ -171,6 +230,37 @@ class PlayerReference:
     def positions(self) -> tuple[str, ...]:
         """Every position the reference holds, for the position filter."""
         return tuple(sorted({row.position for row in self.rows if row.position}))
+
+    @property
+    def buckets(self) -> tuple[PositionBucket, ...]:
+        """The positions the reference holds, split into the two buckets.
+
+        In the order `BUCKET_LABELS` names them, which puts the fantasy
+        positions first because they are what the page opens on.
+        """
+        positions = self.positions
+        return tuple(
+            PositionBucket(
+                name=name,
+                label=label,
+                positions=tuple(
+                    position
+                    for position in positions
+                    if position_bucket(position) == name
+                ),
+            )
+            for name, label in BUCKET_LABELS.items()
+        )
+
+    @property
+    def default_shown(self) -> int:
+        """How many rows are on show before a reader touches a control.
+
+        Rendered as the "showing X of Y" count, so that the number a page
+        arrives with is the number of rows it arrives showing rather than one
+        the script has to correct.
+        """
+        return sum(1 for row in self.rows if row.shown_by_default)
 
 
 @dataclass(frozen=True)

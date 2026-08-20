@@ -37,31 +37,57 @@
   </button>
 {% endmacro %}
 
-{# One multi-select filter on the player reference, as a row of toggles.
-
-   Checkboxes rather than a `<select multiple>`: picking three teams should not
-   require holding a modifier key down, and every value is two or three
-   characters wide, so they all fit on show. The input is the state — the
-   script reads it and nothing has to be kept in step with it. #}
-{% macro filter_facet(facet, label, values) %}
+{# One strip of toggles under a label of its own. The pills go in the call
+   block, so the box they sit in is written here once however it is filled. #}
+{% macro toggle_strip(label) %}
   <fieldset>
     <legend class="heading text-[0.65rem] text-muted">{{ label }}</legend>
-    <div class="mt-2 flex flex-wrap gap-1">
-      {% for value in values %}
-        <label class="cursor-pointer">
-          <input
-            type="checkbox"
-            data-player-filter="{{ facet }}"
-            value="{{ value }}"
-            class="peer sr-only"
-          />
-          <span
-            class="heading block rounded border border-line px-2 py-1 text-[0.65rem] text-muted hover:border-muted/60 hover:text-ink peer-checked:border-accent peer-checked:bg-accent/15 peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
-          >{{ value }}</span>
-        </label>
-      {% endfor %}
-    </div>
+    <div class="mt-2 flex flex-wrap gap-1">{{ caller() }}</div>
   </fieldset>
+{% endmacro %}
+
+{# One toggle in such a strip.
+
+   A checkbox rather than an entry in a `<select multiple>`: picking three teams
+   should not require holding a modifier key down, and every value is a few
+   characters wide, so they all fit on show. The input is the state — the script
+   reads it and nothing has to be kept in step with it, including which of them
+   arrived ticked. #}
+{% macro toggle_pill(facet, value, label=none, checked=false) %}
+  <label class="cursor-pointer">
+    <input
+      type="checkbox"
+      data-player-filter="{{ facet }}"
+      value="{{ value }}"
+      {% if checked %}checked{% endif %}
+      class="peer sr-only"
+    />
+    <span
+      class="heading block rounded border border-line px-2 py-1 text-[0.65rem] text-muted hover:border-muted/60 hover:text-ink peer-checked:border-accent peer-checked:bg-accent/15 peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+    >{{ label or value }}</span>
+  </label>
+{% endmacro %}
+
+{# One multi-select filter on the player reference, as a row of toggles. #}
+{% macro filter_facet(facet, label, values) %}
+  {% call toggle_strip(label) %}
+    {% for value in values %}{{ toggle_pill(facet, value) }}{% endfor %}
+  {% endcall %}
+{% endmacro %}
+
+{# The pair of toggles that says which buckets of positions are on show.
+
+   The same kind of filter as the teams and the positions, and read by the same
+   half of the script — the difference is that the server renders one of them
+   ticked, so the view the page opens on is in the markup rather than something
+   arranged after the fact. Which one that is is the reference's own answer,
+   not this template's. #}
+{% macro bucket_toggles(buckets) %}
+  {% call toggle_strip("Show") %}
+    {% for bucket in buckets %}
+      {{ toggle_pill("bucket", bucket.name, bucket.label, bucket.shown_by_default) }}
+    {% endfor %}
+  {% endcall %}
 {% endmacro %}
 
 {# A column heading that sorts the table by itself. `data-player-sort` names the

@@ -53,6 +53,10 @@ _Avoid_: tier, rank
 A position a fantasy manager can start: quarterback, running back, fullback, wide receiver, tight end, kicker. The one definition of "the players who matter here" — it is what the Players page shows before anything is filtered, and it is the slice of the reference Claude is given. Every other position on a depth chart is carried but not shown by default.
 _Avoid_: skill position, offensive player, starter
 
+**Position bucket**:
+Which half of the reference a player falls in: **fantasy positions**, or **everything else**. Derived from the player's position and never from the depth chart's formation group column, which names a package ("3WR 1TE", "Base 3-4") rather than a side of this question. The Players page opens on the fantasy bucket and offers the other one beside it.
+_Avoid_: group, side of the ball, category
+
 **Season**:
 The NFL season year a set of player data belongs to. Player data is always read as of a specific season, and the season in use is always shown.
 
