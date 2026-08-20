@@ -6,18 +6,18 @@ The note goes in the user turn, never in the system prompt: the system prompt's 
 
 **Blocked by:** 02 — History in episode order, and a schema that can grow (for the startup schema reconcile that adds the column to the deployed database).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 See [../spec.md](../spec.md).
 
-- [ ] The single-episode form has an optional note field; submitting without one is unchanged in every respect
-- [ ] The note appears in the user turn, after the title and upload date and before the transcript, under a label naming it as the reader's own instruction
-- [ ] With no note, the user turn is byte-for-byte what it is today — no empty label, no stray blank line
-- [ ] The system blocks are byte-identical with and without a note, proving the cached prefix was not disturbed
-- [ ] The note is trimmed on the way in; whitespace-only becomes no note
-- [ ] An over-long note is truncated rather than rejected, and the run still completes
-- [ ] The note is stored on the run and survives a restart
-- [ ] The run's page shows the note in its own panel above the summary, and shows no panel when there is none
-- [ ] The downloaded document carries the note in its front matter as a block scalar, so a multi-line note survives the round trip
-- [ ] A database created before the column existed gains it on startup, and its existing rows read back with no note
-- [ ] Nothing searches, lists, or filters on the note
+- [x] The single-episode form has an optional note field; submitting without one is unchanged in every respect
+- [x] The note appears in the user turn, after the title and upload date and before the transcript, under a label naming it as the reader's own instruction
+- [x] With no note, the user turn is byte-for-byte what it is today — no empty label, no stray blank line
+- [x] The system blocks are byte-identical with and without a note, proving the cached prefix was not disturbed
+- [x] The note is trimmed on the way in; whitespace-only becomes no note
+- [x] An over-long note is truncated rather than rejected, and the run still completes
+- [x] The note is stored on the run and survives a restart
+- [x] The run's page shows the note in its own panel above the summary, and shows no panel when there is none
+- [x] The downloaded document carries the note in its front matter as a block scalar, so a multi-line note survives the round trip
+- [x] A database created before the column existed gains it on startup, and its existing rows read back with no note
+- [x] Nothing searches, lists, or filters on the note

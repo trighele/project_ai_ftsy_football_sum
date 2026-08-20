@@ -122,12 +122,12 @@ def test_the_home_pages_recent_list_still_orders_by_when_the_run_happened(
     assert body.index("June Episode") < body.index("August Episode")
 
 
-def _table_columns(database: Path) -> set[str]:
+def table_columns(database: Path) -> set[str]:
     with connect(database) as connection:
         return {row["name"] for row in connection.execute("PRAGMA table_info(runs)")}
 
 
-def _older_schema(database: Path, *, without: str) -> None:
+def older_schema(database: Path, *, without: str) -> None:
     """A runs table as it stood before `without` was added to the schema."""
     declarations = ", ".join(
         f"{name} {declaration}"
@@ -148,11 +148,11 @@ def test_startup_adds_a_column_an_older_database_is_missing_and_keeps_its_rows(
 ) -> None:
     """A column added after a deployment only arrives if startup adds it."""
     database = tmp_path / "older.db"
-    _older_schema(database, without="season")
+    older_schema(database, without="season")
 
     RunStore(database).initialize()
 
-    assert "season" in _table_columns(database)
+    assert "season" in table_columns(database)
     saved = RunStore(database).recent(RECENT_RUN_LIMIT)
     assert [run.title for run in saved] == [EPISODE_TITLE]
     assert saved[0].season is None
@@ -164,11 +164,11 @@ def test_the_schema_reconcile_is_a_no_op_on_a_fresh_database_and_on_a_restart(
     database = tmp_path / "fresh.db"
 
     RunStore(database).initialize()
-    first = _table_columns(database)
+    first = table_columns(database)
     RunStore(database).initialize()
 
     assert first == set(COLUMNS)
-    assert _table_columns(database) == set(COLUMNS)
+    assert table_columns(database) == set(COLUMNS)
 
 
 def test_a_listed_run_carries_enough_detail_to_identify_the_episode(

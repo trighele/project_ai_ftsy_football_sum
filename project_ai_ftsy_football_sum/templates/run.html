@@ -31,6 +31,10 @@
       {% endwith %}
     </div>
 
+    {% with context_note = run.context_note %}
+      {% include "fragments/context_note.html" %}
+    {% endwith %}
+
     {% with summary = run.summary %}
       {% include "fragments/summary.html" %}
     {% endwith %}

@@ -199,16 +199,22 @@ def perform(
     players: PlayerCache,
     model: str,
     publish: Publish,
+    context_note: str | None,
 ) -> None:
     """Do a whole run, announcing each part of it as it lands.
 
     Blocking from end to end and meant for a worker thread: every edge it uses
     is a synchronous library. It never raises — a failure is something the
     reader is told about, not something that leaves the stream hanging open.
+
+    `context_note` arrives already made sense of — see
+    `summarize.context_note_from` — because the page that starts a run shows
+    the note back straight away, and a note shown differently from the one
+    sent and kept would be a lie about what was asked for.
     """
     started = time.perf_counter()
     try:
-        episode = _resolve_episode(url, container, publish)
+        episode = _resolve_episode(url, container, publish, context_note=context_note)
         reference = _load_players(container, players, publish)
         summary, model_used = _write_summary(
             episode, reference, container, model, publish
@@ -255,7 +261,13 @@ def _load_players(
     return outcome.reference
 
 
-def _resolve_episode(url: str, container: Container, publish: Publish) -> Episode:
+def _resolve_episode(
+    url: str,
+    container: Container,
+    publish: Publish,
+    *,
+    context_note: str | None,
+) -> Episode:
     """Turn the submitted URL into the episode, telling the reader as it goes.
 
     What was pasted stays the episode's URL — it is what the reader will
@@ -288,6 +300,7 @@ def _resolve_episode(url: str, container: Container, publish: Publish) -> Episod
         title=metadata.title,
         channel=metadata.channel,
         upload_date=metadata.upload_date,
+        context_note=context_note,
     )
     publish(
         Event("transcript", {"html": fragment("fragments/episode.html", episode=episode)})

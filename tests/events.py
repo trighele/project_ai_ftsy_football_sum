@@ -30,9 +30,19 @@ class Event:
     data: dict[str, Any]
 
 
-def start(client: TestClient, url: str = EPISODE_URL) -> str:
-    """Start a run; hand back the URL its events arrive on."""
-    response = client.post("/runs", data={"youtube_url": url})
+def start(
+    client: TestClient, url: str = EPISODE_URL, context_note: str | None = None
+) -> str:
+    """Start a run; hand back the URL its events arrive on.
+
+    `context_note` is left out of the submission entirely when it is `None`,
+    because a form without the field and a form with an empty one are two
+    different things to have to behave the same way about.
+    """
+    submitted = {"youtube_url": url}
+    if context_note is not None:
+        submitted["context_note"] = context_note
+    response = client.post("/runs", data=submitted)
     assert response.status_code == 202, response.text
     found = _EVENTS_URL.search(response.text)
     assert found is not None, response.text
@@ -47,9 +57,11 @@ def follow(client: TestClient, events_url: str) -> list[Event]:
     return decode(response.text)
 
 
-def run_episode(client: TestClient, url: str = EPISODE_URL) -> list[Event]:
+def run_episode(
+    client: TestClient, url: str = EPISODE_URL, context_note: str | None = None
+) -> list[Event]:
     """Start a run and wait for it to finish."""
-    return follow(client, start(client, url))
+    return follow(client, start(client, url, context_note))
 
 
 def run_titled(

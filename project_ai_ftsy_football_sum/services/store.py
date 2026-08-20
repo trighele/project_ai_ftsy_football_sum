@@ -50,6 +50,7 @@ COLUMNS: dict[str, str] = {
     "upload_date": "TEXT",
     "transcript": "TEXT NOT NULL",
     "summary": "TEXT",
+    "context_note": "TEXT",
     "season": "INTEGER",
     "model": "TEXT",
     "created_at": "TEXT NOT NULL",
@@ -121,6 +122,10 @@ class Run:
     channel: str | None = None
     upload_date: date | None = None
     summary: str | None = None
+    #: What the reader asked this summary to pay attention to, if anything.
+    #: Nothing reads it back to decide anything — it is a record of what was
+    #: asked for, kept beside what came of it.
+    context_note: str | None = None
     season: int | None = None
     model: str | None = None
     created_at: datetime = field(default_factory=_now)
@@ -147,6 +152,7 @@ class Run:
             channel=episode.channel,
             upload_date=episode.upload_date,
             summary=summary,
+            context_note=episode.context_note,
             season=season,
             model=model,
             duration_seconds=duration_seconds,
@@ -277,6 +283,7 @@ def _run_from_row(row: sqlite3.Row) -> Run:
         else None,
         transcript=row["transcript"],
         summary=row["summary"],
+        context_note=row["context_note"],
         season=row["season"],
         model=row["model"],
         created_at=datetime.fromisoformat(row["created_at"]),

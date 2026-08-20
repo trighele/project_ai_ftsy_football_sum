@@ -37,6 +37,10 @@ from project_ai_ftsy_football_sum.services.runs import (
     perform,
 )
 from project_ai_ftsy_football_sum.services.store import Run, RunStore
+from project_ai_ftsy_football_sum.services.summarize import (
+    MAX_CONTEXT_NOTE_LENGTH,
+    context_note_from,
+)
 from project_ai_ftsy_football_sum.templating import templates
 
 PACKAGE_ROOT = Path(__file__).parent
@@ -150,6 +154,9 @@ def create_app(
             {
                 "nav_active": "home",
                 "recent_runs": get_store(request).recent(RECENT_RUN_LIMIT),
+                # The form's own cap, so the length a note is cut to is stated
+                # once and the field cannot drift from the server that trims it.
+                "max_context_note_length": MAX_CONTEXT_NOTE_LENGTH,
             },
         )
 
@@ -226,7 +233,9 @@ def create_app(
 
     @app.post("/runs", response_class=HTMLResponse)
     async def start_run(
-        request: Request, youtube_url: str = Form(default="")
+        request: Request,
+        youtube_url: str = Form(default=""),
+        context_note: str = Form(default=""),
     ) -> HTMLResponse:
         """Start a run and return at once with the panel that follows it.
 
@@ -235,6 +244,10 @@ def create_app(
         stream, so the browser has one path to render rather than two.
         """
         live = request.app.state.runs.start()
+        # Made sense of once, here, and handed to both the run and the panel
+        # that shows it back: a note displayed differently from the one sent
+        # and kept would misrepresent what was asked for.
+        note = context_note_from(context_note)
         container = get_container(request)
         store = get_store(request)
         loop = asyncio.get_running_loop()
@@ -255,6 +268,7 @@ def create_app(
                 players=get_players(request),
                 model=claude_model(),
                 publish=publish,
+                context_note=note,
             )
         )
         # A run that died without reporting anything would leave its stream
@@ -263,7 +277,10 @@ def create_app(
         # not.
         live.task.add_done_callback(lambda _task: live.publish(lost_event()))
         return templates.TemplateResponse(
-            request, "fragments/run.html", {"run": live}, status_code=202
+            request,
+            "fragments/run.html",
+            {"run": live, "context_note": note},
+            status_code=202,
         )
 
     @app.get("/runs/{token}/events")
