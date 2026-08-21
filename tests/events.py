@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from project_ai_ftsy_football_sum.services.batches import (
     TERMINAL_EVENTS as BATCH_TERMINAL,
@@ -62,18 +63,28 @@ def start(
     return found.group(1)
 
 
-def start_batch(client: TestClient, urls: Sequence[str] = BATCH_URLS) -> str:
-    """Submit several episodes at once; hand back the queue's event stream.
+def submit_batch(client: TestClient, submitted: str) -> Response:
+    """Post a submission exactly as the textarea sends it, whatever comes of it.
 
-    The submission is the textarea's own text — one URL per line — rather than
-    a list, because that is what the browser posts and what the server has to
-    make sense of.
+    The submission is the field's own text — one URL per line, blank lines and
+    all — rather than a list, because that is what the browser posts and what
+    the server has to make sense of. The response is handed back unjudged: a
+    submission the server refuses is a thing a test has to be able to ask for.
     """
-    response = client.post("/batches", data={"youtube_urls": "\n".join(urls)})
+    return client.post("/batches", data={"youtube_urls": submitted})
+
+
+def batch_events_url(response: Response) -> str:
+    """Where the queue a submission handed back says its events will arrive."""
     assert response.status_code == 202, response.text
     found = _BATCH_EVENTS_URL.search(response.text)
     assert found is not None, response.text
     return found.group(1)
+
+
+def start_batch(client: TestClient, urls: Sequence[str] = BATCH_URLS) -> str:
+    """Start a batch of episodes; hand back the queue's event stream."""
+    return batch_events_url(submit_batch(client, "\n".join(urls)))
 
 
 def run_batch(

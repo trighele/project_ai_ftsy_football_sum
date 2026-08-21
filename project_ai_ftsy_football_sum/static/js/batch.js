@@ -23,7 +23,16 @@
         body: new FormData(form),
       });
       target.innerHTML = await response.text();
-      follow(target.querySelector("[data-batch-events]"));
+      const panel = target.querySelector("[data-batch-events]");
+      // A submission the server refused — nothing pasted, or more episodes
+      // than a batch takes — answers with the panel saying so and no stream.
+      // The panel is the whole of the answer, so there is nothing to follow
+      // and the button goes straight back to being pressable.
+      if (!panel) {
+        button.disabled = false;
+        return;
+      }
+      follow(panel);
     } catch (error) {
       button.disabled = false;
       throw error;

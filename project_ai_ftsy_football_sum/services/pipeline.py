@@ -2,12 +2,12 @@
 
 Resolve the URL into an episode, make sure the player reference is current,
 stream the summary out of Claude, save the run. That is the whole of the work,
-and it is the same work whoever asked for it. It has one caller today — a
-single run, which wraps it in the events it publishes as it goes
-(`services/runs.py`) — and it is a module of its own so that a second caller
-summarizing a list of episodes into queue rows wraps this rather than
-re-implementing it, which is the only thing that keeps the two from drifting
-into producing different summaries.
+and it is the same work whoever asked for it. It has two callers — a single
+run, which wraps it in the events it publishes as it goes (`services/runs.py`),
+and a batch, which wraps it in a queue row (`services/batches.py`) — and it is
+a module of its own so that the second wraps this rather than re-implementing
+it, which is the only thing that keeps the two from drifting into producing
+different summaries.
 
 What the pipeline owes a caller is a *report* rather than a rendering: which
 part of the work has landed, the episode once it is known, that the player
@@ -103,6 +103,22 @@ class Summarized:
     elapsed_seconds: float
 
 
+def episode_id(url: str) -> str:
+    """Which episode a submitted URL names, or the failure to report for it.
+
+    Public because a batch validates a whole paste before it starts any of it
+    (`services/batches.py`), and what a line that names no episode *is* must
+    be one answer rather than two: the same `invalid_url` kind, and the URL
+    parser's own words rather than the kind's generic ones, since it knows
+    whether what was pasted was the wrong site, the wrong kind of link, or
+    nothing at all.
+    """
+    try:
+        return video_id_from_url(url)
+    except InvalidUrlError as error:
+        raise RunFailed.of("invalid_url", error, str(error)) from error
+
+
 def summarize_episode(
     *,
     url: str,
@@ -163,10 +179,7 @@ def _resolve_episode(
     recognise in their history — but YouTube is always asked about the
     canonical watch URL, which every one of its services accepts.
     """
-    try:
-        video_id = video_id_from_url(url)
-    except InvalidUrlError as error:
-        raise RunFailed.of("invalid_url", error, str(error)) from error
+    video_id = episode_id(url)
 
     # `unknown` rather than one of the YouTube kinds: an edge that cannot be
     # built is a missing library or a bad configuration here, and telling the

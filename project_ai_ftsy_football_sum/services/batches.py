@@ -22,6 +22,14 @@ each other's streams. `batch-done` is emitted even when every episode failed:
 a batch that ran is a batch that finished, and the counts are what say how it
 went.
 
+What a submission has to survive before any of that is a paste. `batch_from`
+is the whole of it and asks YouTube nothing: blank lines go, two lines naming
+one episode become one, a line naming no episode becomes a row that has
+already failed, and a submission that is not a batch at all — empty, or over
+the cap — is refused with a `BatchRejected` rather than started. So a batch
+arrives whole, which is what lets the queue be rendered before any work and
+is why the work runs over `Batch.queued` rather than every row.
+
 A failing episode does not stop the ones after it — `RunFailed` is the whole
 of what the pipeline raises for an episode that cannot be summarized, so it is
 caught per episode and becomes that row's failure. Anything else the pipeline
@@ -39,6 +47,7 @@ from project_ai_ftsy_football_sum.container import Container
 from project_ai_ftsy_football_sum.services.failures import RunFailed
 from project_ai_ftsy_football_sum.services.pipeline import (
     EpisodeProgress,
+    episode_id,
     summarize_episode,
 )
 from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
@@ -55,6 +64,11 @@ from project_ai_ftsy_football_sum.templating import fragment
 #: is how the same machinery ends a run on `done` and a batch on these.
 TERMINAL_EVENTS = frozenset({"batch-done", "batch-failed"})
 
+#: The most episodes one submission may ask for. A cap rather than a queue
+#: that takes anything: a paste gone wrong is an hour of work started by
+#: accident, and ten is comfortably more than an evening's podcasts.
+MAX_BATCH_EPISODES = 10
+
 #: Where one episode of a batch has got to. `done` and `failed` are the two
 #: an episode stops on; a batch is over when every row is on one of them.
 EpisodeState = Literal["queued", "running", "done", "failed"]
@@ -68,6 +82,16 @@ STATE_LABELS: dict[EpisodeState, str] = {
 }
 
 
+class BatchRejected(Exception):
+    """The submission is not a batch: nothing is queued and nothing starts.
+
+    Not a `RunFailed`, because no episode failed and no work was begun — the
+    reader is being told about what they pasted rather than about what became
+    of it. It carries only its message, which is the whole of what the panel
+    saying so needs.
+    """
+
+
 @dataclass
 class BatchEpisode:
     """One episode of a batch, and how far it has got.
@@ -76,9 +100,13 @@ class BatchEpisode:
     browser is shown it queued, then running, then finished, and what changes
     between those is this object rather than three of them.
 
-    `position` is its place in the submission and never changes — it is what
-    the browser finds the row by, and it is why the episodes are numbered here
-    rather than identified by URL, which ticket 10 will collapse duplicates of.
+    `position` is its place in the batch and never changes — it is what the
+    browser finds the row by, and it is why the episodes are numbered here
+    rather than identified by URL: two lines of a paste can name one episode,
+    and only one of them becomes a row.
+
+    A row can arrive already `failed`: a line that is not a usable URL is
+    failed while the batch is being made sense of, before anything starts.
     """
 
     position: int
@@ -142,9 +170,28 @@ class Batch:
     episodes: list[BatchEpisode] = field(default_factory=list)
 
     @property
+    def queued(self) -> list[BatchEpisode]:
+        """The episodes waiting to be summarized.
+
+        Not every row of a queue is work waiting: a line that named no episode
+        is a failed row before the batch starts, and it is there to be counted
+        and read rather than to be summarized.
+        """
+        return [episode for episode in self.episodes if episode.state == "queued"]
+
+    @property
     def starting_label(self) -> str:
-        """What the panel says before any episode has finished."""
-        return f"Summarizing {_episode_count(len(self.episodes))}…"
+        """What the panel says before any episode has finished.
+
+        The episodes that are going to be worked on, which is not always every
+        row: a queue that opens by promising to summarize three episodes with
+        one of them already showing Failed has miscounted in front of the
+        reader.
+        """
+        waiting = self.queued
+        if not waiting:
+            return "Nothing here could be summarized."
+        return f"Summarizing {_episode_count(len(waiting))}…"
 
     def counts(self) -> BatchCounts:
         return BatchCounts(
@@ -159,21 +206,60 @@ class Batch:
 
 
 def batch_from(submitted: str) -> Batch:
-    """The submitted text as a queue: one episode per line, in that order.
+    """The submitted text as a batch, or a refusal to make one of it.
 
-    Lines are trimmed and empty ones dropped, which is the least a "one per
-    line" field can do and not the guarantee ticket 10 makes of it. Nothing
-    else is made of the text here: what a batch does about a line that is not
-    a usable URL, about the same episode listed twice, and about a paste far
-    longer than a batch is allowed to be, is all ticket 10's.
+    A list pasted out of a notes app is rarely tidy, and every untidiness is
+    dealt with here rather than out at the edges, because all of it is answered
+    without asking YouTube anything:
+
+    - Blank and whitespace-only lines are dropped. They are not episodes.
+    - Each line is parsed into a video identifier, and a line that is not a
+      usable YouTube URL becomes a failed row with the same `invalid_url` kind
+      a single run would stop with. It is a row rather than a dropped line, so
+      the reader is told which of their lines this app could make nothing of.
+    - Two lines naming one episode become one row, the first of them, so a
+      share link and a watch link of the same episode are summarized once.
+      The URL kept is the one pasted first, because that is the one the reader
+      wrote and the one they will recognise in their history.
+
+    Raises `BatchRejected` for a submission that is not a batch at all: an
+    empty one, or one asking for more than `MAX_BATCH_EPISODES` episodes.
+    Nothing is started either way. The cap counts what would be summarized
+    rather than the lines pasted, because it is a cap on the work a submission
+    asks for: a second line naming an episode already listed is not more work,
+    and neither is a line naming no episode — refusing ten good URLs over a
+    typo among them would cost the reader the very thing failing that line
+    early is meant to save.
     """
-    urls = [line.strip() for line in submitted.splitlines()]
-    return Batch(
-        episodes=[
-            BatchEpisode(position=position, url=url)
-            for position, url in enumerate(url for url in urls if url)
-        ]
-    )
+    episodes: list[BatchEpisode] = []
+    seen: set[str] = set()
+    for line in submitted.splitlines():
+        url = line.strip()
+        if not url:
+            continue
+        try:
+            video_id = episode_id(url)
+        except RunFailed as failure:
+            episodes.append(
+                _failed_row(position=len(episodes), url=url, failure=failure)
+            )
+            continue
+        if video_id in seen:
+            continue
+        seen.add(video_id)
+        episodes.append(BatchEpisode(position=len(episodes), url=url))
+
+    if not episodes:
+        raise BatchRejected("Paste at least one YouTube URL to summarize a batch.")
+
+    batch = Batch(episodes=episodes)
+    asked_for = len(batch.queued)
+    if asked_for > MAX_BATCH_EPISODES:
+        raise BatchRejected(
+            f"A batch takes at most {MAX_BATCH_EPISODES} episodes, and this "
+            f"submission asks for {asked_for}. Summarize them a few at a time."
+        )
+    return batch
 
 
 def perform_batch(
@@ -196,8 +282,11 @@ def perform_batch(
     call, which the twelve-hour cache makes one sync for the whole batch —
     and which keeps a long batch from working against a reference that went
     stale halfway through it.
+
+    Only the queued episodes are worked on: a row `batch_from` already failed
+    is not asked about again, and it is counted at the end with the rest.
     """
-    for episode in batch.episodes:
+    for episode in batch.queued:
         _summarize_episode(
             episode,
             container=container,
@@ -224,6 +313,16 @@ def lost_event() -> Event:
         ),
         heading="Batch stopped",
     )
+
+
+def _failed_row(*, position: int, url: str, failure: RunFailed) -> BatchEpisode:
+    """A line that names no episode, as the row saying so.
+
+    A row rather than a dropped line, and the pipeline's own failure rather
+    than one written again here, so that a batch tells the reader exactly what
+    a single run would have told them about the same paste.
+    """
+    return BatchEpisode(position=position, url=url, state="failed", failure=failure)
 
 
 def _summarize_episode(

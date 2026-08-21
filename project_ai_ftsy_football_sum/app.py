@@ -208,6 +208,9 @@ def create_app(
                 # The form's own cap, so the length a note is cut to is stated
                 # once and the field cannot drift from the server that trims it.
                 "max_context_note_length": MAX_CONTEXT_NOTE_LENGTH,
+                # And the batch's, for the same reason: the number the reader
+                # is told is the number the submission is measured against.
+                "max_batch_episodes": batches.MAX_BATCH_EPISODES,
             },
         )
 
@@ -346,11 +349,28 @@ def create_app(
 
         The queue is the receipt for what was pasted, so it is rendered whole
         before any work starts and every row of it is on the page from the
-        moment it arrives. What happens to each row after that arrives on the
-        event stream it names.
+        moment it arrives — the failed rows included, since a line that names
+        no episode is failed while the submission is being made sense of and
+        never asked about. What happens to the rest arrives on the event
+        stream the queue names.
+
+        A submission that is not a batch at all — nothing pasted, or more
+        episodes than one takes — is answered with the panel saying so and
+        no stream, because there is nothing to follow. It is a rejected
+        request rather than a run of no episodes, and it says so with its
+        status.
         """
+        try:
+            batch = batches.batch_from(youtube_urls)
+        except batches.BatchRejected as rejected:
+            return templates.TemplateResponse(
+                request,
+                "fragments/failure.html",
+                {"heading": "Batch not started", "message": str(rejected)},
+                status_code=400,
+            )
+
         live = request.app.state.batches.start()
-        batch = batches.batch_from(youtube_urls)
         container = get_container(request)
         store = get_store(request)
         players = get_players(request)

@@ -26,7 +26,7 @@ One end-to-end pass over an episode: fetch captions, build the transcript, summa
 _Avoid_: job, task, session
 
 **Batch**:
-An ordered set of episodes submitted at once and summarized one after another. A batch is followed while it happens and then forgotten; what it leaves behind is a saved run per episode.
+An ordered set of episodes submitted at once and summarized one after another. What is submitted is a list of lines; what becomes the batch is what is left after the blank ones go and two lines naming one episode become one. A line that names no episode is an episode of the batch that has already failed. A batch is capped, is followed while it happens and then forgotten; what it leaves behind is a saved run per episode.
 _Avoid_: queue, bulk, playlist
 
 **Context note**:
