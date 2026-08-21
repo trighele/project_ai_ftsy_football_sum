@@ -23,7 +23,8 @@ from project_ai_ftsy_football_sum.config import (
 )
 from project_ai_ftsy_football_sum.container import Container
 from project_ai_ftsy_football_sum.services.players import calendar_season
-from project_ai_ftsy_football_sum.services.store import RunStore
+from project_ai_ftsy_football_sum.services.sqlite import connect
+from project_ai_ftsy_football_sum.services.store import COLUMNS, RunStore
 from tests.events import EPISODE_URL, run_episode, run_titled
 from tests.fakes import FakeClaudeClient, FakeYouTubeSource
 
@@ -86,6 +87,88 @@ def test_the_most_recent_run_is_listed_first(
     body = client.get("/").text
 
     assert body.index("Episode 3") < body.index("Episode 2") < body.index("Episode 1")
+
+
+def test_the_two_orderings_are_two_different_reads(
+    client: TestClient, youtube: FakeYouTubeSource, app_store: RunStore
+) -> None:
+    """The home page asks what was run last; History asks what is newest.
+
+    Same rows, two questions, and the answers differ — which is the whole
+    reason they are two named reads rather than one with a flag.
+    """
+    run_titled(client, youtube, "August Episode", uploaded="20260812")
+    run_titled(client, youtube, "June Episode", uploaded="20260619")
+
+    assert [run.title for run in app_store.recent(RECENT_RUN_LIMIT)] == [
+        "June Episode",
+        "August Episode",
+    ]
+    assert [run.title for run in app_store.search()] == [
+        "August Episode",
+        "June Episode",
+    ]
+
+
+def test_the_home_pages_recent_list_still_orders_by_when_the_run_happened(
+    client: TestClient, youtube: FakeYouTubeSource
+) -> None:
+    """What was just run is a different question from what is newest."""
+    run_titled(client, youtube, "August Episode", uploaded="20260812")
+    run_titled(client, youtube, "June Episode", uploaded="20260619")
+
+    body = client.get("/").text
+
+    assert body.index("June Episode") < body.index("August Episode")
+
+
+def table_columns(database: Path) -> set[str]:
+    with connect(database) as connection:
+        return {row["name"] for row in connection.execute("PRAGMA table_info(runs)")}
+
+
+def older_schema(database: Path, *, without: str) -> None:
+    """A runs table as it stood before `without` was added to the schema."""
+    declarations = ", ".join(
+        f"{name} {declaration}"
+        for name, declaration in COLUMNS.items()
+        if name != without
+    )
+    with connect(database) as connection:
+        connection.execute(f"CREATE TABLE runs ({declarations})")
+        connection.execute(
+            "INSERT INTO runs (url, video_id, title, transcript, created_at, "
+            "duration_seconds) VALUES (?, ?, ?, ?, ?, ?)",
+            (EPISODE_URL, "dQw4w9WgXcQ", EPISODE_TITLE, "...", "2026-08-01", 1.0),
+        )
+
+
+def test_startup_adds_a_column_an_older_database_is_missing_and_keeps_its_rows(
+    tmp_path: Path,
+) -> None:
+    """A column added after a deployment only arrives if startup adds it."""
+    database = tmp_path / "older.db"
+    older_schema(database, without="season")
+
+    RunStore(database).initialize()
+
+    assert "season" in table_columns(database)
+    saved = RunStore(database).recent(RECENT_RUN_LIMIT)
+    assert [run.title for run in saved] == [EPISODE_TITLE]
+    assert saved[0].season is None
+
+
+def test_the_schema_reconcile_is_a_no_op_on_a_fresh_database_and_on_a_restart(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "fresh.db"
+
+    RunStore(database).initialize()
+    first = table_columns(database)
+    RunStore(database).initialize()
+
+    assert first == set(COLUMNS)
+    assert table_columns(database) == set(COLUMNS)
 
 
 def test_a_listed_run_carries_enough_detail_to_identify_the_episode(

@@ -1,4 +1,12 @@
-"""Running an episode end to end, and following it while it happens.
+"""Following a run while it happens, and telling the browser about it.
+
+The work itself — resolve the episode, ensure the player reference, stream the
+summary, save the run — is `services/pipeline.py`, and is shared with anything
+else that summarizes an episode. What is here is the single-run *telling* of
+it: one event per thing the pipeline reports, and exactly one terminal event
+whatever happens — along with the machinery every telling shares, since a
+batch (`services/batches.py`) is followed through the same buffered stream and
+stops on the same rendered panel.
 
 A run is started by a request that returns at once with an identifier for it.
 The work then happens in an in-process background task, and its progress
@@ -13,7 +21,8 @@ here in one place:
 - `transcript` — the episode panel, rendered, once the episode is resolved.
 - `warning`    — the run is going ahead on something less than it wanted.
 - `summary`    — a piece of the summary, in the order Claude wrote it.
-- `done`       — the run finished and was saved. Terminal.
+- `done`       — the run finished and was saved, with the summary rendered.
+                 Terminal.
 - `failed`     — the run did not finish, and why, by kind. Terminal.
 
 Exactly one terminal event ends every run. A stream that merely stops is
@@ -24,49 +33,36 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 from collections import OrderedDict
 from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 from uuid import uuid4
 
-from project_ai_ftsy_football_sum.container import Container, Edge
-from project_ai_ftsy_football_sum.services.failures import (
-    FailureKind,
-    RunFailed,
-    classify_youtube_error,
+from project_ai_ftsy_football_sum.container import Container
+from project_ai_ftsy_football_sum.services.failures import RunFailed
+from project_ai_ftsy_football_sum.services.markdown import render_markdown
+from project_ai_ftsy_football_sum.services.pipeline import (
+    EpisodeProgress,
+    Stage,
+    summarize_episode,
 )
 from project_ai_ftsy_football_sum.services.player_cache import PlayerCache
-from project_ai_ftsy_football_sum.services.players import (
-    NflverseUnavailableError,
-    PlayerReference,
-    ReferenceOutcome,
-    ensure_reference,
-)
+from project_ai_ftsy_football_sum.services.players import ReferenceOutcome
 from project_ai_ftsy_football_sum.services.store import Run, RunStore
-from project_ai_ftsy_football_sum.services.summarize import (
-    SummaryClient,
-    summary_request,
-)
-from project_ai_ftsy_football_sum.services.transcripts import (
-    Episode,
-    InvalidUrlError,
-    describe_episode,
-    select_track,
-    transcript_from,
-    video_id_from_url,
-    watch_url,
-)
+from project_ai_ftsy_football_sum.services.transcripts import Episode
 from project_ai_ftsy_football_sum.templating import fragment
 
 #: The events that end a run. Every run emits exactly one of them.
+#:
+#: Which names are terminal is the *stream's* business rather than this
+#: module's — a batch follows the same machinery under names of its own
+#: (`services/batches.py`) — so it is handed to `LiveRun` rather than read off
+#: this constant, and this is only the default a run gets.
 TERMINAL_EVENTS = frozenset({"done", "failed"})
 
-#: The parts of a run the reader is told about.
-Stage = Literal["captions", "metadata", "players", "summarizing"]
-
-#: What the reader is told as each part of a run lands.
+#: What the reader is told as each part of a run lands. The parts themselves
+#: are the pipeline's (`pipeline.Stage`); what to call them is this file's.
 STAGE_LABELS: Mapping[Stage, str] = {
     "captions": "Captions retrieved",
     "metadata": "Episode identified",
@@ -109,8 +105,9 @@ class LiveRun:
     that is most of the run.
     """
 
-    def __init__(self, token: str) -> None:
+    def __init__(self, token: str, terminal: frozenset[str]) -> None:
         self.token = token
+        self.terminal = terminal
         self.events: list[Event] = []
         self.finished = False
         #: The background task, held onto so it is not collected mid-run.
@@ -126,7 +123,7 @@ class LiveRun:
         if self.finished:
             return
         self.events.append(event)
-        self.finished = event.name in TERMINAL_EVENTS
+        self.finished = event.name in self.terminal
         # Setting then clearing wakes whoever is waiting now and leaves the
         # flag down for the next wait. Nothing can slip between a follower's
         # buffer check and its wait: both run on this one loop, with no await
@@ -157,14 +154,21 @@ class LiveRun:
 
 
 class LiveRuns:
-    """The runs in flight, and the last few that have finished."""
+    """The work in flight, and the last few pieces of it that have finished.
 
-    def __init__(self) -> None:
+    A batch is followed through one of these too, under its own terminal event
+    names: it is started by one request and followed by another exactly as a
+    run is, so it wants the same buffering and the same retention rather than
+    a second registry that would have to be kept in step with this one.
+    """
+
+    def __init__(self, terminal: frozenset[str] = TERMINAL_EVENTS) -> None:
+        self._terminal = terminal
         self._runs: OrderedDict[str, LiveRun] = OrderedDict()
 
     def start(self) -> LiveRun:
         """Register a new run, ready to be followed."""
-        run = LiveRun(token=uuid4().hex)
+        run = LiveRun(token=uuid4().hex, terminal=self._terminal)
         self._runs[run.token] = run
         while len(self._runs) > RETAINED_RUNS:
             self._runs.pop(self._oldest_droppable())
@@ -191,6 +195,35 @@ class LiveRuns:
 Publish = Callable[[Event], None]
 
 
+class _RunEvents(EpisodeProgress):
+    """The single-run telling of a pipeline: one event per thing it reports.
+
+    This is the whole of what separates a run from any other caller of the
+    pipeline — words for the stages, a rendered panel for the episode, and the
+    summary a piece at a time because the reader watches it being written.
+    """
+
+    def __init__(self, publish: Publish) -> None:
+        self._publish = publish
+
+    def stage_reached(self, stage: Stage) -> None:
+        self._publish(_stage_event(stage))
+
+    def episode_resolved(self, episode: Episode) -> None:
+        self._publish(
+            Event(
+                "transcript",
+                {"html": fragment("fragments/episode.html", episode=episode)},
+            )
+        )
+
+    def reference_stale(self, outcome: ReferenceOutcome) -> None:
+        self._publish(_warning_event(outcome))
+
+    def summary_written(self, text: str) -> None:
+        self._publish(Event("summary", {"text": text}))
+
+
 def perform(
     *,
     url: str,
@@ -199,130 +232,30 @@ def perform(
     players: PlayerCache,
     model: str,
     publish: Publish,
+    context_note: str | None,
 ) -> None:
     """Do a whole run, announcing each part of it as it lands.
 
-    Blocking from end to end and meant for a worker thread: every edge it uses
-    is a synchronous library. It never raises — a failure is something the
-    reader is told about, not something that leaves the stream hanging open.
+    Blocking from end to end and meant for a worker thread, because the
+    pipeline it drives is. Every failure the pipeline names is told to the
+    reader rather than raised, because an exception here would leave the
+    stream hanging open; anything it does not name — a failure of the store
+    itself — ends the task, and `lost_event` is what closes the stream then.
     """
-    started = time.perf_counter()
     try:
-        episode = _resolve_episode(url, container, publish)
-        reference = _load_players(container, players, publish)
-        summary, model_used = _write_summary(
-            episode, reference, container, model, publish
+        finished = summarize_episode(
+            url=url,
+            container=container,
+            store=store,
+            players=players,
+            model=model,
+            context_note=context_note,
+            progress=_RunEvents(publish),
         )
     except RunFailed as failure:
         publish(_failure_event(failure))
         return
-    except Exception as error:  # noqa: BLE001 — a run must always end on the stream
-        publish(_failure_event(RunFailed.of("unknown", error)))
-        return
-
-    elapsed = time.perf_counter() - started
-    saved = store.save(
-        Run.of(
-            episode,
-            duration_seconds=elapsed,
-            summary=summary,
-            model=model_used,
-            season=reference.season,
-        )
-    )
-    publish(_done_event(saved, elapsed))
-
-
-def _load_players(
-    container: Container, players: PlayerCache, publish: Publish
-) -> PlayerReference:
-    """Make sure the player reference is current before Claude is asked.
-
-    A stale cache is synced here rather than on a schedule, so a run is never
-    summarized against last week's depth charts and nobody has to remember to
-    press anything. A sync that fails but leaves a cached reference behind is
-    not a failure — the run goes ahead against the older reference, and says
-    out loud how old it is, because an upstream outage should cost accuracy
-    rather than the whole summary.
-    """
-    try:
-        outcome = ensure_reference(container, players)
-    except NflverseUnavailableError as error:
-        raise RunFailed.of("nflverse", error) from error
-    publish(_stage_event("players"))
-    if outcome.sync_error is not None:
-        publish(_warning_event(outcome))
-    return outcome.reference
-
-
-def _resolve_episode(url: str, container: Container, publish: Publish) -> Episode:
-    """Turn the submitted URL into the episode, telling the reader as it goes.
-
-    What was pasted stays the episode's URL — it is what the reader will
-    recognise in their history — but YouTube is always asked about the
-    canonical watch URL, which every one of its services accepts.
-    """
-    try:
-        video_id = video_id_from_url(url)
-    except InvalidUrlError as error:
-        raise RunFailed.of("invalid_url", error, str(error)) from error
-
-    # `unknown` rather than one of the YouTube kinds: an edge that cannot be
-    # built is a missing library or a bad configuration here, and telling the
-    # reader that YouTube blocked them would send them to wait out an outage
-    # that is ours. `unknown` says so and shows the error.
-    source = _edge(container, "captions", kind="unknown")
-    try:
-        transcript = transcript_from(select_track(source.list_tracks(video_id)).fetch())
-    except Exception as error:  # noqa: BLE001 — the kind is read off the error
-        raise RunFailed.of(classify_youtube_error(error), error) from error
-    publish(_stage_event("captions"))
-
-    metadata = describe_episode(source, watch_url(video_id))
-    publish(_stage_event("metadata"))
-
-    episode = Episode(
-        video_id=video_id,
-        url=url.strip(),
-        transcript=transcript,
-        title=metadata.title,
-        channel=metadata.channel,
-        upload_date=metadata.upload_date,
-    )
-    publish(
-        Event("transcript", {"html": fragment("fragments/episode.html", episode=episode)})
-    )
-    return episode
-
-
-def _write_summary(
-    episode: Episode,
-    reference: PlayerReference,
-    container: Container,
-    model: str,
-    publish: Publish,
-) -> tuple[str, str]:
-    """Stream the summary out of Claude, publishing it as it is written."""
-    claude: SummaryClient = _edge(container, "claude", kind="claude")
-    request = summary_request(episode, reference, model=model)
-    publish(_stage_event("summarizing"))
-
-    written: list[str] = []
-    try:
-        for text in claude.stream(request):
-            written.append(text)
-            publish(Event("summary", {"text": text}))
-    except Exception as error:  # noqa: BLE001 — every API failure reads the same
-        raise RunFailed.of("claude", error) from error
-    return "".join(written), request.model
-
-
-def _edge(container: Container, edge: Edge, *, kind: FailureKind) -> Any:
-    """Resolve an edge, reporting a failure to build it as one of that edge."""
-    try:
-        return container.resolve(edge)
-    except Exception as error:  # noqa: BLE001 — unwired, unconfigured, all one
-        raise RunFailed.of(kind, error) from error
+    publish(_done_event(finished.run, finished.elapsed_seconds, finished.summary))
 
 
 def lost_event() -> Event:
@@ -363,28 +296,54 @@ def _warning_event(outcome: ReferenceOutcome) -> Event:
     )
 
 
-def _done_event(run: Run, elapsed: float) -> Event:
+def _done_event(run: Run, elapsed: float, summary: str) -> Event:
+    """That the run finished, and the summary it finished with as prose.
+
+    The rendered summary travels on the terminal event rather than being asked
+    for afterwards, so the run the reader has just watched formats itself
+    without a reload and without a second request. It is the whole of what was
+    streamed, rendered once — the pieces the browser assembled and this HTML
+    are the same summary or the page is lying about what it watched.
+
+    `download_href` is here for the same reason every fragment is: the server
+    says where a run's document lives, and Copy and Download are handed it
+    rather than each assembling a URL out of the identifier beside it.
+    """
     return Event(
         "done",
         {
             "run_id": run.id,
             "href": f"/runs/{run.id}",
+            "download_href": f"/runs/{run.id}/download",
             "duration_seconds": round(elapsed, 1),
             "label": f"Summarized in {elapsed:.1f}s",
+            "summary_html": render_markdown(summary),
         },
     )
 
 
-def _failure_event(failure: RunFailed) -> Event:
+def failure_event(name: str, failure: RunFailed, *, heading: str) -> Event:
+    """That work stopped, and the panel saying why.
+
+    Shared with a batch rather than written twice: what differs between the
+    two is the event's name and the two words at the top of the panel, and
+    everything a reader is actually told — the kind, the message, the error
+    behind its toggle — is owed to them identically either way.
+    """
     return Event(
-        "failed",
+        name,
         {
             "kind": failure.kind,
             "message": failure.message,
             "html": fragment(
                 "fragments/failure.html",
+                heading=heading,
                 message=failure.message,
                 detail=failure.detail,
             ),
         },
     )
+
+
+def _failure_event(failure: RunFailed) -> Event:
+    return failure_event("failed", failure, heading="Run stopped")

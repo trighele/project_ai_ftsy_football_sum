@@ -1,0 +1,19 @@
+{# What the reader asked this episode be read with in mind.
+
+   Above the summary, because it is the instruction that shaped it: a summary
+   that leans on one position group reads as a strange summary until you can
+   see what was asked for. Rendered from the same fragment while a run happens
+   and when it is reopened, so a saved run is not a lesser view of the work.
+
+   Nothing at all when there is no note — an empty panel would be a field
+   invented for the sake of consistency. #}
+{% if context_note %}
+  <section class="mt-4 rounded-lg border border-line bg-panel">
+    <header class="border-b border-line px-6 py-4">
+      <h2 class="heading text-xs text-muted">Context note</h2>
+    </header>
+    <div class="px-6 py-5">
+      <p class="text-sm leading-relaxed whitespace-pre-wrap text-ink/90">{{ context_note }}</p>
+    </div>
+  </section>
+{% endif %}

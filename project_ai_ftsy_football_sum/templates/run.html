@@ -1,7 +1,10 @@
 {% extends "base.html" %}
-{% import "macros.html" as macros %}
 
 {% block title %}{{ run.title }} &middot; Fantasy Football Podcast Summarizer{% endblock %}
+
+{% block scripts %}
+  <script defer src="{{ url_for('static', path='/js/copy.js') }}"></script>
+{% endblock %}
 
 {% block content %}
   <section class="mx-auto max-w-3xl">
@@ -16,10 +19,11 @@
           </p>
           <span class="text-muted/40">&middot;</span>
         {% endif %}
+        {# Copy and Download live in the summary panel's own header, beside
+           the thing they hand over. #}
         <p class="heading text-[0.65rem] tabular-nums text-muted/70">
           Summarized {{ run.created_at_label }}
         </p>
-        {{ macros.download_link(run) }}
       </div>
     </div>
 
@@ -31,7 +35,11 @@
       {% endwith %}
     </div>
 
-    {% with summary = run.summary %}
+    {% with context_note = run.context_note %}
+      {% include "fragments/context_note.html" %}
+    {% endwith %}
+
+    {% with summary = run.summary, run_id = run.id %}
       {% include "fragments/summary.html" %}
     {% endwith %}
 

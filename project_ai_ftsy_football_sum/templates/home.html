@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 
 {% block content %}
   <section class="mx-auto max-w-3xl">
@@ -6,34 +7,111 @@
       Summarize an <span class="text-accent">episode</span>
     </h1>
     <p class="mt-4 max-w-xl text-sm text-muted">
-      Paste the YouTube URL of a fantasy football podcast episode. The
-      transcript comes from the episode&rsquo;s own captions; the summary is
-      written against a current NFL player reference.
+      Paste the YouTube URL of a fantasy football podcast episode, or a list of
+      them. The transcript comes from the episode&rsquo;s own captions; the
+      summary is written against a current NFL player reference.
     </p>
 
-    <form
-      class="mt-8 flex flex-col gap-3 sm:flex-row"
-      action="/runs"
-      method="post"
-      data-run-form
-    >
-      <label class="sr-only" for="youtube_url">YouTube URL</label>
+    {# The two ways in, as a radio group over two real forms.
+
+       A radio group rather than scripted tabs: the browser supplies the
+       checked state, arrow-key navigation between the tabs, and the styling
+       hook the labels read through `peer-checked`, so which form is on show
+       needs nothing running. Each form posts to its own route on its own —
+       what needs the script is following the work, exactly as it is for a
+       single run.
+
+       The inputs, the labels, and the forms are all one row of siblings
+       because that is what `peer-checked` can reach across; the forms take a
+       full row of their own by being `w-full` in a wrapping flex box. #}
+    <div class="mt-8 flex flex-wrap items-center gap-2">
       <input
-        id="youtube_url"
-        name="youtube_url"
-        type="url"
-        inputmode="url"
-        autocomplete="off"
-        placeholder="https://www.youtube.com/watch?v=&hellip;"
-        class="flex-1 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
+        type="radio"
+        name="submission_mode"
+        id="mode-single"
+        class="peer/single sr-only"
+        checked
       />
-      <button
-        type="submit"
-        class="heading rounded-md bg-accent px-6 py-3 text-sm text-accent-ink hover:bg-accent-bright focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-accent/30 disabled:text-ink/50"
+      <input
+        type="radio"
+        name="submission_mode"
+        id="mode-multiple"
+        class="peer/multiple sr-only"
+      />
+
+      <label
+        for="mode-single"
+        class="heading cursor-pointer rounded-md border border-line px-4 py-2 text-xs text-muted hover:border-muted/60 hover:text-ink peer-checked/single:border-accent peer-checked/single:bg-accent/15 peer-checked/single:text-accent peer-focus-visible/single:ring-2 peer-focus-visible/single:ring-accent"
+      >Single episode</label>
+      <label
+        for="mode-multiple"
+        class="heading cursor-pointer rounded-md border border-line px-4 py-2 text-xs text-muted hover:border-muted/60 hover:text-ink peer-checked/multiple:border-accent peer-checked/multiple:bg-accent/15 peer-checked/multiple:text-accent peer-focus-visible/multiple:ring-2 peer-focus-visible/multiple:ring-accent"
+      >Multiple episodes</label>
+
+      <form
+        class="mt-6 flex w-full flex-col gap-3 peer-checked/multiple:hidden"
+        action="/runs"
+        method="post"
+        data-run-form
       >
-        Summarize
-      </button>
-    </form>
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <label class="sr-only" for="youtube_url">YouTube URL</label>
+          <input
+            id="youtube_url"
+            name="youtube_url"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            placeholder="https://www.youtube.com/watch?v=&hellip;"
+            class="flex-1 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
+          />
+          {{ macros.submit_button("Summarize") }}
+        </div>
+
+        {# Optional, and it says so: the ordinary case is a URL and one button.
+           The cap is enforced here and again on the server, where a longer note
+           is cut rather than refused. #}
+        <div>
+          <label class="heading block text-[0.65rem] text-muted" for="context_note">
+            Context note <span class="text-muted/60">optional</span>
+          </label>
+          <textarea
+            id="context_note"
+            name="context_note"
+            rows="2"
+            maxlength="{{ max_context_note_length }}"
+            placeholder="What should this summary pay attention to? A position group, a roster, a name to track&hellip;"
+            class="mt-2 w-full rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
+          ></textarea>
+        </div>
+      </form>
+
+      {# One episode per line, summarized one after another. No context note:
+         a note is written about a particular episode, and a batch is the case
+         where the reader is not sitting with each one. #}
+      <form
+        class="mt-6 hidden w-full flex-col gap-3 peer-checked/multiple:flex"
+        action="/batches"
+        method="post"
+        data-batch-form
+      >
+        <div>
+          <label class="heading block text-[0.65rem] text-muted" for="youtube_urls">
+            YouTube URLs
+            <span class="text-muted/60">one per line, up to {{ max_batch_episodes }}</span>
+          </label>
+          <textarea
+            id="youtube_urls"
+            name="youtube_urls"
+            rows="6"
+            autocomplete="off"
+            placeholder="https://www.youtube.com/watch?v=&hellip;&#10;https://www.youtube.com/watch?v=&hellip;"
+            class="mt-2 w-full rounded-md border border-line bg-panel px-4 py-3 font-mono text-sm text-ink placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
+          ></textarea>
+        </div>
+        {{ macros.submit_button("Summarize all", extra="self-start") }}
+      </form>
+    </div>
 
     <noscript>
       <p class="mt-6 text-sm text-muted">
@@ -57,4 +135,7 @@
 
 {% block scripts %}
   <script defer src="{{ url_for('static', path='/js/run.js') }}"></script>
+  <script defer src="{{ url_for('static', path='/js/batch.js') }}"></script>
+  <script defer src="{{ url_for('static', path='/js/recent-runs.js') }}"></script>
+  <script defer src="{{ url_for('static', path='/js/copy.js') }}"></script>
 {% endblock %}

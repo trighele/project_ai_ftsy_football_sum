@@ -12,14 +12,53 @@
   </span>
 {% endmacro %}
 
-{# The run as a Markdown file. Offered from the History list and from the run
-   itself, so it looks and reads the same in both. #}
-{% macro download_link(run) %}
+{# Where a run's document lives. Stated once: Download links to it and Copy
+   fetches it, and a reader who does both must get the same bytes. #}
+{% macro download_href(run_id) %}/runs/{{ run_id }}/download{% endmacro %}
+
+{# The run as a Markdown file. Offered from the History list and from the
+   summary panel, so it looks and reads the same in both.
+
+   By identifier rather than by run, because the summary panel of a live run
+   has no run to hand until the run ends — hence `in_run_panel`, which carries
+   the hook `run.js` fills the href in through. A History row is never filled
+   in by anything, so it does not advertise a handle nothing takes. #}
+{% macro download_link(run_id, in_run_panel=false) %}
   <a
-    href="/runs/{{ run.id }}/download"
+    {% if run_id %}href="{{ download_href(run_id) }}"{% endif %}
+    {% if in_run_panel %}data-run-download{% endif %}
     class="heading rounded px-2 py-1 text-[0.65rem] text-muted hover:bg-accent/15 hover:text-accent"
     title="Download this summary as Markdown"
   >Download</a>
+{% endmacro %}
+
+{# The same document, onto the clipboard instead of into a file.
+
+   `data-copy-url` is what `copy.js` fetches: the document is built in one
+   place already, so copying it means asking for it rather than rebuilding it
+   in the browser, and the two can never disagree. #}
+{% macro copy_button(run_id) %}
+  <button
+    type="button"
+    {% if run_id %}data-copy-url="{{ download_href(run_id) }}"{% endif %}
+    data-run-copy
+    class="heading rounded px-2 py-1 text-[0.65rem] text-muted hover:bg-accent/15 hover:text-accent"
+    title="Copy this summary as Markdown"
+  ><span data-copy-label>Copy</span></button>
+{% endmacro %}
+
+{# The button that starts work. Both submission forms have one and they are
+   the same control — the word on it is the only thing that differs — so the
+   disabled appearance a running submission relies on is described once.
+
+   `extra` is for the one class the caller's layout needs; every utility here
+   is a literal because Tailwind scans these templates for complete class
+   names and would not emit one this file assembled. #}
+{% macro submit_button(label, extra="") %}
+  <button
+    type="submit"
+    class="{{ extra }} heading rounded-md bg-accent px-6 py-3 text-sm text-accent-ink hover:bg-accent-bright focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-accent/30 disabled:text-ink/50"
+  >{{ label }}</button>
 {% endmacro %}
 
 {# Fetch the player reference again now. Offered above the table and again in
@@ -37,31 +76,57 @@
   </button>
 {% endmacro %}
 
-{# One multi-select filter on the player reference, as a row of toggles.
-
-   Checkboxes rather than a `<select multiple>`: picking three teams should not
-   require holding a modifier key down, and every value is two or three
-   characters wide, so they all fit on show. The input is the state — the
-   script reads it and nothing has to be kept in step with it. #}
-{% macro filter_facet(facet, label, values) %}
+{# One strip of toggles under a label of its own. The pills go in the call
+   block, so the box they sit in is written here once however it is filled. #}
+{% macro toggle_strip(label) %}
   <fieldset>
     <legend class="heading text-[0.65rem] text-muted">{{ label }}</legend>
-    <div class="mt-2 flex flex-wrap gap-1">
-      {% for value in values %}
-        <label class="cursor-pointer">
-          <input
-            type="checkbox"
-            data-player-filter="{{ facet }}"
-            value="{{ value }}"
-            class="peer sr-only"
-          />
-          <span
-            class="heading block rounded border border-line px-2 py-1 text-[0.65rem] text-muted hover:border-muted/60 hover:text-ink peer-checked:border-accent peer-checked:bg-accent/15 peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
-          >{{ value }}</span>
-        </label>
-      {% endfor %}
-    </div>
+    <div class="mt-2 flex flex-wrap gap-1">{{ caller() }}</div>
   </fieldset>
+{% endmacro %}
+
+{# One toggle in such a strip.
+
+   A checkbox rather than an entry in a `<select multiple>`: picking three teams
+   should not require holding a modifier key down, and every value is a few
+   characters wide, so they all fit on show. The input is the state — the script
+   reads it and nothing has to be kept in step with it, including which of them
+   arrived ticked. #}
+{% macro toggle_pill(facet, value, label=none, checked=false) %}
+  <label class="cursor-pointer">
+    <input
+      type="checkbox"
+      data-player-filter="{{ facet }}"
+      value="{{ value }}"
+      {% if checked %}checked{% endif %}
+      class="peer sr-only"
+    />
+    <span
+      class="heading block rounded border border-line px-2 py-1 text-[0.65rem] text-muted hover:border-muted/60 hover:text-ink peer-checked:border-accent peer-checked:bg-accent/15 peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+    >{{ label or value }}</span>
+  </label>
+{% endmacro %}
+
+{# One multi-select filter on the player reference, as a row of toggles. #}
+{% macro filter_facet(facet, label, values) %}
+  {% call toggle_strip(label) %}
+    {% for value in values %}{{ toggle_pill(facet, value) }}{% endfor %}
+  {% endcall %}
+{% endmacro %}
+
+{# The pair of toggles that says which buckets of positions are on show.
+
+   The same kind of filter as the teams and the positions, and read by the same
+   half of the script — the difference is that the server renders one of them
+   ticked, so the view the page opens on is in the markup rather than something
+   arranged after the fact. Which one that is is the reference's own answer,
+   not this template's. #}
+{% macro bucket_toggles(buckets) %}
+  {% call toggle_strip("Show") %}
+    {% for bucket in buckets %}
+      {{ toggle_pill("bucket", bucket.name, bucket.label, bucket.shown_by_default) }}
+    {% endfor %}
+  {% endcall %}
 {% endmacro %}
 
 {# A column heading that sorts the table by itself. `data-player-sort` names the
@@ -85,20 +150,28 @@
   </th>
 {% endmacro %}
 
-{# The error underneath a message, for the reader who wants it.
+{# The raw thing under the readable one, for the reader who wants it: the
+   error under a message, the Markdown source under a summary. Closed by
+   default wherever it appears — it is available, not on show — so that "show
+   me what was actually there" is one gesture across the whole application.
 
-   Shared by the panel a stopped run renders and the one a stale player
-   reference renders, so "show me what actually happened" is the same gesture
-   wherever something has gone wrong. Closed by default: it is available, not
-   on show. #}
+   `hook` is the `data-` attribute a script finds it by, and `hidden` is for a
+   panel that has nothing to disclose yet. #}
+{% macro raw_disclosure(label, text, hook=none, hidden=false) %}
+  <details class="mt-3 {% if hidden %}hidden{% endif %}"{% if hook %} data-{{ hook }}{% endif %}>
+    <summary class="heading cursor-pointer text-[0.65rem] text-muted hover:text-ink">
+      {{ label }}
+    </summary>
+    <pre class="mt-2 overflow-x-auto rounded border border-line bg-surface px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap break-words text-muted"><code>{{ text }}</code></pre>
+  </details>
+{% endmacro %}
+
+{# Shared by the panel a stopped run renders and the one a stale player
+   reference renders, so an error reads the same wherever something has gone
+   wrong. #}
 {% macro raw_error(detail) %}
   {% if detail %}
-    <details class="mt-3">
-      <summary class="heading cursor-pointer text-[0.65rem] text-muted hover:text-ink">
-        Show the underlying error
-      </summary>
-      <pre class="mt-2 overflow-x-auto rounded border border-line bg-surface px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap break-words text-muted">{{ detail }}</pre>
-    </details>
+    {{ raw_disclosure("Show the underlying error", detail) }}
   {% endif %}
 {% endmacro %}
 

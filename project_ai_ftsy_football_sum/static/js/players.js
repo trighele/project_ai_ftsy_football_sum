@@ -18,8 +18,9 @@
   // Which column the table is currently sorted by, and which way.
   const sortState = new WeakMap();
 
-  // `input` covers all three controls — a checkbox and a select both fire it —
-  // so the table narrows as a name is typed and the moment a box is ticked.
+  // `input` covers every control in the strip — a checkbox and a select both
+  // fire it — so the table narrows as a name is typed and the moment a box is
+  // ticked.
   document.addEventListener("input", (event) => {
     if (event.target.closest("[data-player-filters]")) apply();
   });
@@ -64,7 +65,8 @@
   }
 
   // Show the rows that pass every filter at once. An empty filter is not a
-  // filter: filters narrow each other, they do not replace each other.
+  // filter: filters narrow each other, they do not replace each other. The
+  // buckets are the exception, and `matches` says why.
   function apply() {
     const element = table();
     if (!element) return;
@@ -72,6 +74,10 @@
     const search = document.querySelector("[data-player-search]");
     const cutoff = document.querySelector("[data-player-depth]");
     const narrowing = {
+      // Read off the pair of toggles above the position facets and off nothing
+      // else, so that ticking a position inside a bucket that is off does not
+      // turn that bucket on.
+      buckets: checkedValues("bucket"),
       query: search.value.trim().toLowerCase(),
       teams: checkedValues("team"),
       positions: checkedValues("position"),
@@ -89,9 +95,13 @@
     element.querySelector("[data-player-empty]").hidden = shown > 0;
   }
 
-  function matches(row, { query, teams, positions, depth }) {
+  function matches(row, { buckets, query, teams, positions, depth }) {
     const depthRank = value(row, "depth-rank");
     return (
+      // The one filter where empty means empty rather than everything: the
+      // buckets say which players are being looked at at all, so turning both
+      // off is a reader asking for none of them.
+      buckets.has(value(row, "bucket")) &&
       (!query || value(row, "player-name").includes(query)) &&
       (!teams.size || teams.has(value(row, "team"))) &&
       (!positions.size || positions.has(value(row, "position"))) &&
@@ -158,15 +168,19 @@
     };
   }
 
-  // Back to the whole reference in the order it arrived in.
+  // Back to the page as it arrived: the default view in the order the server
+  // sent it, which is fantasy positions and not every player.
   function reset() {
     const element = table();
     if (!element) return;
 
     document.querySelector("[data-player-search]").value = "";
     document.querySelector("[data-player-depth]").value = "";
+    // Back to whatever the server rendered checked — which is the bucket the
+    // page opens on — so the default lives in the markup once rather than
+    // being written down again here.
     for (const box of document.querySelectorAll("[data-player-filter]")) {
-      box.checked = false;
+      box.checked = box.defaultChecked;
     }
 
     sortState.delete(element);

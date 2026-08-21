@@ -62,3 +62,166 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+
+/* The summary, as prose.
+
+   Hand-written rather than `@tailwindcss/typography`, because the standalone
+   Tailwind CLI this repository builds with does not bundle the plugin. It
+   only has to cover what Claude is asked to write and what the renderer is
+   able to emit: headings, paragraphs, lists, emphasis, links, code,
+   blockquotes, rules, and tables — in the palette above, so a summary reads
+   as part of this application rather than as a page pasted into it.
+
+   Preflight has already stripped every one of these elements back to nothing,
+   which is why margins and list markers are stated here rather than inherited. */
+@utility prose-summary {
+  color: --alpha(var(--color-ink) / 90%);
+  font-size: 0.875rem;
+  line-height: 1.7;
+
+  /* The panel supplies the padding; the prose must not add to it at the ends. */
+  & > :first-child {
+    margin-top: 0;
+  }
+  & > :last-child {
+    margin-bottom: 0;
+  }
+
+  & :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-display);
+    font-stretch: 75%;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    color: var(--color-ink);
+    margin-top: 1.75rem;
+    margin-bottom: 0.6rem;
+  }
+  & h1 {
+    font-size: 1.5rem;
+  }
+  /* The output contract's own sections are `##`, so this is the heading a
+     reader actually scans the summary by. */
+  & h2 {
+    font-size: 1.125rem;
+    color: var(--color-accent);
+  }
+  & h3 {
+    font-size: 1rem;
+  }
+  & :is(h4, h5, h6) {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+  }
+
+  & p {
+    margin-block: 0.75rem;
+  }
+
+  & :is(ul, ol) {
+    margin-block: 0.75rem;
+    padding-left: 1.25rem;
+  }
+  & ul {
+    list-style-type: disc;
+  }
+  & ol {
+    list-style-type: decimal;
+  }
+  & li {
+    margin-block: 0.3rem;
+  }
+  & li::marker {
+    color: var(--color-muted);
+  }
+  /* A news item is a bullet with its own bullets under it — the contract asks
+     for exactly that — so a nested list sits closer than a new one. */
+  & li > :is(ul, ol) {
+    margin-block: 0.3rem;
+  }
+
+  & strong {
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  & em {
+    font-style: italic;
+  }
+
+  & a {
+    color: var(--color-accent);
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+  }
+  & a:hover {
+    color: var(--color-accent-bright);
+  }
+
+  & code {
+    font-family: var(--font-mono);
+    font-size: 0.8125em;
+    border: 1px solid var(--color-line);
+    border-radius: 0.25rem;
+    background-color: var(--color-surface);
+    padding: 0.1rem 0.3rem;
+    color: var(--color-ink);
+  }
+  & pre {
+    margin-block: 1rem;
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: 0.375rem;
+    background-color: var(--color-surface);
+    padding: 0.75rem 1rem;
+  }
+  /* Inside a block the border and background are the block's, not each span's. */
+  & pre code {
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    padding: 0;
+  }
+
+  & blockquote {
+    margin-block: 1rem;
+    border-left: 2px solid var(--color-accent);
+    padding-left: 1rem;
+    color: var(--color-muted);
+  }
+
+  & hr {
+    margin-block: 1.5rem;
+    border-color: var(--color-line);
+  }
+
+  /* A wide table scrolls inside itself rather than pushing the page sideways.
+     `display: block` is what gives it a scroll container of its own without a
+     wrapping element the renderer would have to invent; `width: max-content`
+     then keeps the columns as wide as their contents rather than letting a
+     block collapse them. */
+  & table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    margin-block: 1rem;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+  & :is(th, td) {
+    border: 1px solid var(--color-line);
+    padding: 0.4rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  & th {
+    font-family: var(--font-display);
+    font-stretch: 75%;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    color: var(--color-muted);
+    background-color: var(--color-panel-raised);
+  }
+}

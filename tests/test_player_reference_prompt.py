@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 
 from project_ai_ftsy_football_sum.app import create_app
 from project_ai_ftsy_football_sum.container import Container
+from project_ai_ftsy_football_sum.services import players, summarize
 from project_ai_ftsy_football_sum.services.players import CACHE_TTL, calendar_season
 from project_ai_ftsy_football_sum.services.store import RunStore
 from project_ai_ftsy_football_sum.services.summarize import CACHE_CONTROL
@@ -217,6 +218,19 @@ def test_every_listed_player_is_a_startable_position_at_the_cutoff_or_better(
     for cells in rows:
         assert cells[REFERENCE_COLUMNS.index("Position")] in STARTABLE_POSITIONS
         assert int(cells[REFERENCE_COLUMNS.index("Depth rank")]) <= DEPTH_CUTOFF
+
+
+def test_the_prompt_and_the_page_share_one_definition_of_a_fantasy_position() -> None:
+    """The same object, not an equal copy.
+
+    The one test in this file that reads the implementation back on purpose:
+    what it defends is not the set's membership, which `STARTABLE_POSITIONS`
+    above writes out, but that there is a single one of it. A second frozenset declared beside
+    `prompt_rows` would be equal, would pass every other test here, and would
+    be exactly the fork this fails on.
+    """
+    assert summarize.FANTASY_POSITIONS is players.FANTASY_POSITIONS
+    assert players.FANTASY_POSITIONS == STARTABLE_POSITIONS
 
 
 def test_the_prompt_says_the_table_is_a_slice_rather_than_the_whole_league(

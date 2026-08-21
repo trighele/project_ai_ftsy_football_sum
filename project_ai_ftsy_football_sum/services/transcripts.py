@@ -46,7 +46,13 @@ class EpisodeMetadata:
 
 @dataclass(frozen=True)
 class Episode:
-    """One podcast instalment, resolved: what we show and summarize."""
+    """One podcast instalment, resolved: what we show and summarize.
+
+    `context_note` is the one field here that YouTube knows nothing about —
+    it is what the reader asked this episode be read with in mind. It rides
+    with the episode because everything that wants it wants it per episode:
+    the prompt, the saved run, and the file that run is downloaded as.
+    """
 
     video_id: str
     url: str
@@ -54,6 +60,7 @@ class Episode:
     title: str
     channel: str | None = None
     upload_date: date | None = None
+    context_note: str | None = None
 
     @property
     def upload_date_label(self) -> str:

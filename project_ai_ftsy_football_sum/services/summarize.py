@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from project_ai_ftsy_football_sum.services.players import (
+    FANTASY_POSITIONS,
     TIER_SIZE,
     PlayerReference,
     PlayerRow,
@@ -52,12 +53,6 @@ surname-only mention on the right player and to state a player's team and \
 position; do not contradict it.\
 """
 
-#: The positions a fantasy manager can actually start, and so the only ones
-#: worth paying for on every run. Everybody else on a depth chart is a
-#: long-snapper as far as a podcast is concerned. Team defences are not
-#: depth-chart rows, which is why there is no DST here.
-PROMPT_POSITIONS = frozenset({"QB", "RB", "FB", "WR", "TE", "K"})
-
 #: How far down each position's depth chart the reference goes. Below the
 #: third string a player is not being discussed on a fantasy podcast, and the
 #: cut is what takes the reference from ~2,800 rows to ~700.
@@ -70,6 +65,20 @@ REFERENCE_COLUMNS = ("Player", "Team", "Position", "Depth rank", "ECR tier", "EC
 #: What a column holds nothing for. A visible gap rather than a blank cell, so
 #: that a row with no ranking cannot be misread as a row with a ranking of zero.
 MISSING = "-"
+
+#: How the reader's own instruction is introduced in the user turn. Named as
+#: theirs rather than as further context, so that Claude reads it as something
+#: asked about this episode and not as another table it was handed — the player
+#: reference is context too, and the two must not blur into one another.
+CONTEXT_NOTE_LABEL = (
+    "Context note from the reader — what they want this summary to pay "
+    "attention to:"
+)
+
+#: How much of a context note is sent and kept. Room for a few sentences and a
+#: roster; past it the note is cut rather than the run refused, because losing
+#: the tail of a note is a smaller harm than losing the summary it asked for.
+MAX_CONTEXT_NOTE_LENGTH = 2000
 
 #: How the reference block is marked for prompt caching. Everything above and
 #: including it is a cached prefix, which is why nothing that varies between
@@ -105,6 +114,20 @@ without asserting a team, position, or ranking you cannot see here.\
 """
 
 
+def context_note_from(submitted: str | None) -> str | None:
+    """The note as it will be sent, shown, and kept — or `None` for no note.
+
+    Trimmed, because a stray space a reader cannot see should not change what
+    is asked of Claude, and whitespace alone is not an instruction. Cut to
+    length rather than refused: a wall of pasted text should cost its own tail
+    and nothing else.
+    """
+    note = (submitted or "").strip()
+    if not note:
+        return None
+    return note[:MAX_CONTEXT_NOTE_LENGTH].rstrip()
+
+
 @dataclass(frozen=True)
 class SummaryRequest:
     """Everything handed to the Claude edge to write one summary.
@@ -138,7 +161,7 @@ def prompt_rows(reference: PlayerReference) -> tuple[PlayerRow, ...]:
     return tuple(
         row
         for row in reference.rows
-        if row.position in PROMPT_POSITIONS
+        if row.position in FANTASY_POSITIONS
         and row.depth_rank is not None
         and row.depth_rank <= DEPTH_RANK_LIMIT
     )
@@ -211,17 +234,26 @@ def system_blocks(reference: PlayerReference) -> tuple[Mapping[str, Any], ...]:
 def user_turn(episode: Episode) -> str:
     """The turn carrying the episode itself.
 
-    Title and upload date travel with the transcript rather than in the system
-    prompt: they change every run, and everything above them is meant to stay
-    byte-identical so the player reference block can be cached.
+    Title, upload date, and the reader's context note travel with the
+    transcript rather than in the system prompt: they change every run, and
+    everything above them is meant to stay byte-identical so the player
+    reference block can be cached. A note in the system prompt would invalidate
+    that cache on every episode, silently, at full price.
+
+    An episode with no note produces exactly the turn it produced before notes
+    existed — no empty label and no stray blank line — so that the ordinary
+    case is not paying for the feature in tokens or in noise.
     """
-    return (
+    parts = [
         "Here is the transcript of a fantasy football podcast episode. "
-        "Summarize it using the structure described above.\n\n"
-        f"Title: {episode.title}\n"
-        f"Upload date: {episode.upload_date_label}\n\n"
-        f"Transcript:\n\n{episode.transcript}"
-    )
+        "Summarize it using the structure described above.\n\n",
+        f"Title: {episode.title}\n",
+        f"Upload date: {episode.upload_date_label}\n",
+    ]
+    if episode.context_note:
+        parts.append(f"\n{CONTEXT_NOTE_LABEL}\n{episode.context_note}\n")
+    parts.append(f"\nTranscript:\n\n{episode.transcript}")
+    return "".join(parts)
 
 
 def summary_request(

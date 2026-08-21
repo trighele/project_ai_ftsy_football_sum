@@ -65,6 +65,7 @@ class FakeYouTubeSource:
         metadata: dict[str, Any] | None = None,
         oembed: dict[str, Any] | None = None,
         captions_error: Exception | None = None,
+        captions_errors: dict[str, Exception] | None = None,
         metadata_error: Exception | None = None,
         oembed_error: Exception | None = None,
     ) -> None:
@@ -72,14 +73,19 @@ class FakeYouTubeSource:
         self.metadata = fixture("metadata") if metadata is None else metadata
         self.oembed = fixture("oembed") if oembed is None else oembed
         self.captions_error = captions_error
+        #: Captions failing for one episode and not the others, by video id.
+        #: A batch is the case that needs it: what has to be shown is a dead
+        #: video among live ones, which one global error cannot express.
+        self.captions_errors = dict(captions_errors or {})
         self.metadata_error = metadata_error
         self.oembed_error = oembed_error
         self.calls: list[tuple[str, str]] = []
 
     def list_tracks(self, video_id: str) -> list[FakeCaptionTrack]:
         self.calls.append(("list_tracks", video_id))
-        if self.captions_error is not None:
-            raise self.captions_error
+        error = self.captions_errors.get(video_id, self.captions_error)
+        if error is not None:
+            raise error
         return list(self.tracks)
 
     def fetch_metadata(self, url: str) -> dict[str, Any]:

@@ -25,6 +25,14 @@ The structured Markdown write-up Claude produces from a transcript — news item
 One end-to-end pass over an episode: fetch captions, build the transcript, summarize. Runs are saved and can be reopened later.
 _Avoid_: job, task, session
 
+**Batch**:
+An ordered set of episodes submitted at once and summarized one after another. What is submitted is a list of lines; what becomes the batch is what is left after the blank ones go and two lines naming one episode become one. A line that names no episode is an episode of the batch that has already failed. A batch is capped, is followed while it happens and then forgotten; what it leaves behind is a saved run per episode.
+_Avoid_: queue, bulk, playlist
+
+**Context note**:
+A short instruction the reader adds to a single episode, saying what they want its summary to pay attention to. The reader's own addition to the request — distinct from the player reference, which is also context but is never called that. An episode submitted as part of a batch has no context note.
+_Avoid_: prompt, notes, instructions
+
 ### Player data
 
 **Player reference**:
@@ -40,6 +48,14 @@ A player's fantasy-value grouping from expert consensus rankings. Says who is wo
 _Avoid_: tier, rank
 
 > **Depth rank and ECR tier are different things and must never be collapsed into a single "tier".** A team's starting kicker is depth rank 1 and a bottom ECR tier; a rookie in a committee backfield can be depth rank 2 and a high ECR tier. Both are carried, both are named explicitly.
+
+**Fantasy position**:
+A position a fantasy manager can start: quarterback, running back, fullback, wide receiver, tight end, kicker. The one definition of "the players who matter here" — it is what the Players page shows before anything is filtered, and it is the slice of the reference Claude is given. Every other position on a depth chart is carried but not shown by default.
+_Avoid_: skill position, offensive player, starter
+
+**Position bucket**:
+Which half of the reference a player falls in: **fantasy positions**, or **everything else**. Derived from the player's position and never from the depth chart's formation group column, which names a package ("3WR 1TE", "Base 3-4") rather than a side of this question. The Players page opens on the fantasy bucket and offers the other one beside it.
+_Avoid_: group, side of the ball, category
 
 **Season**:
 The NFL season year a set of player data belongs to. Player data is always read as of a specific season, and the season in use is always shown.

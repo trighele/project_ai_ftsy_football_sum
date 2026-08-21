@@ -8,6 +8,7 @@ Paste the YouTube URL of a fantasy football podcast episode and get back a struc
 - Summarizes with Claude, streamed into the page as it is written
 - Hands Claude a player reference synced from [nflverse](https://github.com/nflverse): depth rank, ECR tier and rank, bye week, injury status
 - Saves every run: history, search, re-open, download as Markdown, delete
+- Reads a summary as formatted prose, with its Markdown source one click away, and copies it to the clipboard
 - A Players page you can sort, filter, and search entirely in the browser
 - Server-rendered HTML with htmx; no build step to run the app
 
@@ -69,8 +70,9 @@ This builds and runs the image locally, distinct from the deployed instance. The
 
 1. Open the web interface
 2. Paste a YouTube URL of a fantasy football podcast and press **Summarize**
-3. The transcript appears first; the summary streams in beneath it
-4. Find it again later under **History**, where it can be re-opened, downloaded as Markdown, or deleted
+3. The transcript appears first; the summary streams in beneath it, and formats itself when the run ends
+4. Press **Copy** or **Download** to take the summary elsewhere — both hand over the same Markdown document
+5. Find it again later under **History**, where it can be re-opened, downloaded as Markdown, or deleted
 
 ## Output format
 
