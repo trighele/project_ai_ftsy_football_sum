@@ -4,7 +4,9 @@ The work itself — resolve the episode, ensure the player reference, stream the
 summary, save the run — is `services/pipeline.py`, and is shared with anything
 else that summarizes an episode. What is here is the single-run *telling* of
 it: one event per thing the pipeline reports, and exactly one terminal event
-whatever happens.
+whatever happens — along with the machinery every telling shares, since a
+batch (`services/batches.py`) is followed through the same buffered stream and
+stops on the same rendered panel.
 
 A run is started by a request that returns at once with an identifier for it.
 The work then happens in an in-process background task, and its progress
@@ -52,6 +54,11 @@ from project_ai_ftsy_football_sum.services.transcripts import Episode
 from project_ai_ftsy_football_sum.templating import fragment
 
 #: The events that end a run. Every run emits exactly one of them.
+#:
+#: Which names are terminal is the *stream's* business rather than this
+#: module's — a batch follows the same machinery under names of its own
+#: (`services/batches.py`) — so it is handed to `LiveRun` rather than read off
+#: this constant, and this is only the default a run gets.
 TERMINAL_EVENTS = frozenset({"done", "failed"})
 
 #: What the reader is told as each part of a run lands. The parts themselves
@@ -98,8 +105,9 @@ class LiveRun:
     that is most of the run.
     """
 
-    def __init__(self, token: str) -> None:
+    def __init__(self, token: str, terminal: frozenset[str]) -> None:
         self.token = token
+        self.terminal = terminal
         self.events: list[Event] = []
         self.finished = False
         #: The background task, held onto so it is not collected mid-run.
@@ -115,7 +123,7 @@ class LiveRun:
         if self.finished:
             return
         self.events.append(event)
-        self.finished = event.name in TERMINAL_EVENTS
+        self.finished = event.name in self.terminal
         # Setting then clearing wakes whoever is waiting now and leaves the
         # flag down for the next wait. Nothing can slip between a follower's
         # buffer check and its wait: both run on this one loop, with no await
@@ -146,14 +154,21 @@ class LiveRun:
 
 
 class LiveRuns:
-    """The runs in flight, and the last few that have finished."""
+    """The work in flight, and the last few pieces of it that have finished.
 
-    def __init__(self) -> None:
+    A batch is followed through one of these too, under its own terminal event
+    names: it is started by one request and followed by another exactly as a
+    run is, so it wants the same buffering and the same retention rather than
+    a second registry that would have to be kept in step with this one.
+    """
+
+    def __init__(self, terminal: frozenset[str] = TERMINAL_EVENTS) -> None:
+        self._terminal = terminal
         self._runs: OrderedDict[str, LiveRun] = OrderedDict()
 
     def start(self) -> LiveRun:
         """Register a new run, ready to be followed."""
-        run = LiveRun(token=uuid4().hex)
+        run = LiveRun(token=uuid4().hex, terminal=self._terminal)
         self._runs[run.token] = run
         while len(self._runs) > RETAINED_RUNS:
             self._runs.pop(self._oldest_droppable())
@@ -307,16 +322,28 @@ def _done_event(run: Run, elapsed: float, summary: str) -> Event:
     )
 
 
-def _failure_event(failure: RunFailed) -> Event:
+def failure_event(name: str, failure: RunFailed, *, heading: str) -> Event:
+    """That work stopped, and the panel saying why.
+
+    Shared with a batch rather than written twice: what differs between the
+    two is the event's name and the two words at the top of the panel, and
+    everything a reader is actually told — the kind, the message, the error
+    behind its toggle — is owed to them identically either way.
+    """
     return Event(
-        "failed",
+        name,
         {
             "kind": failure.kind,
             "message": failure.message,
             "html": fragment(
                 "fragments/failure.html",
+                heading=heading,
                 message=failure.message,
                 detail=failure.detail,
             ),
         },
     )
+
+
+def _failure_event(failure: RunFailed) -> Event:
+    return failure_event("failed", failure, heading="Run stopped")

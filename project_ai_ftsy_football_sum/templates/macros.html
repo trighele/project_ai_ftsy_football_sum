@@ -47,6 +47,20 @@
   ><span data-copy-label>Copy</span></button>
 {% endmacro %}
 
+{# The button that starts work. Both submission forms have one and they are
+   the same control — the word on it is the only thing that differs — so the
+   disabled appearance a running submission relies on is described once.
+
+   `extra` is for the one class the caller's layout needs; every utility here
+   is a literal because Tailwind scans these templates for complete class
+   names and would not emit one this file assembled. #}
+{% macro submit_button(label, extra="") %}
+  <button
+    type="submit"
+    class="{{ extra }} heading rounded-md bg-accent px-6 py-3 text-sm text-accent-ink hover:bg-accent-bright focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-accent/30 disabled:text-ink/50"
+  >{{ label }}</button>
+{% endmacro %}
+
 {# Fetch the player reference again now. Offered above the table and again in
    place of it when there is nothing to show, so it looks and behaves the same
    whether or not a sync has ever succeeded. #}

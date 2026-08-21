@@ -82,7 +82,9 @@
       const done = JSON.parse(event.data);
       status.textContent = done.label;
       showFinishedSummary(summaryParts, done);
-      refreshRecentRuns();
+      // The run just made the recent list out of date. The list knows how to
+      // fetch itself again — see `recent-runs.js`.
+      document.dispatchEvent(new CustomEvent("recent-runs-stale"));
       finish();
     });
 
@@ -120,14 +122,5 @@
     // see the note there on why it cannot fetch one afterwards. Nothing else
     // knows a copy control has just been given a URL, so this says so.
     parts.copy.dispatchEvent(new CustomEvent("copy-url-set", { bubbles: true }));
-  }
-
-  // The run just made the recent list out of date. Ask the server for it
-  // again rather than assembling a row here.
-  async function refreshRecentRuns() {
-    const list = document.querySelector("#recent-runs");
-    if (!list) return;
-    const response = await fetch("/fragments/recent-runs");
-    list.outerHTML = await response.text();
   }
 })();

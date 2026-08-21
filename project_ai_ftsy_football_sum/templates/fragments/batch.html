@@ -1,0 +1,25 @@
+{# What a batch looks like while it is happening.
+
+   The server hands this back the moment a batch is submitted, with every row
+   already in it: the queue is the receipt for what was pasted, so it is whole
+   before any work has started. `batch.js` opens the event stream named here
+   and swaps each row for the one the server re-rendered when it changed.
+
+   No summary panel and no transcript. A batch reports state; the summaries
+   are read on the run pages each finished row links to. #}
+<div data-batch-events="/batches/{{ token }}/events">
+  <p class="heading text-xs text-accent" data-batch-status aria-live="polite">
+    {{ batch.starting_label }}
+  </p>
+
+  <ol class="mt-4 divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+    {% for episode in batch.episodes %}
+      {% include "fragments/queue_row.html" %}
+    {% endfor %}
+  </ol>
+
+  {# A batch that stopped altogether says so here, under the rows it managed:
+     the episodes that were summarized before it died are saved runs and are
+     still worth linking to. #}
+  <div class="mt-4" data-batch-failure></div>
+</div>

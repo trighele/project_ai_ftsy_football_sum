@@ -1,25 +1,38 @@
-"""Driving a run the way the browser does, and reading back what it emitted.
+"""Driving work the way the browser does, and reading back what it emitted.
 
 A run is two requests: one that starts it, and one that follows it. The second
 ends when the run does, so a test can ask for the whole stream in one call and
-assert on it afterwards.
+assert on it afterwards. A batch is started and followed the same way, under
+its own event names, which is why the helpers for one sit beside the other.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from fastapi.testclient import TestClient
 
+from project_ai_ftsy_football_sum.services.batches import (
+    TERMINAL_EVENTS as BATCH_TERMINAL,
+)
+from project_ai_ftsy_football_sum.services.transcripts import watch_url
 from tests.fakes import FakeYouTubeSource, fixture
 
 EPISODE_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
+#: Three episodes a submission of several at once can tell apart. Eleven
+#: characters because a YouTube identifier is, and spelt so that a saved run
+#: says which line of the submission it came from.
+BATCH_VIDEO_IDS = ("episode0001", "episode0002", "episode0003")
+BATCH_URLS = tuple(watch_url(video_id) for video_id in BATCH_VIDEO_IDS)
+
 #: Where the panel the server hands back says its events will arrive.
 _EVENTS_URL = re.compile(r'data-run-events="([^"]+)"')
+_BATCH_EVENTS_URL = re.compile(r'data-batch-events="([^"]+)"')
 
 
 @dataclass(frozen=True)
@@ -47,6 +60,27 @@ def start(
     found = _EVENTS_URL.search(response.text)
     assert found is not None, response.text
     return found.group(1)
+
+
+def start_batch(client: TestClient, urls: Sequence[str] = BATCH_URLS) -> str:
+    """Submit several episodes at once; hand back the queue's event stream.
+
+    The submission is the textarea's own text — one URL per line — rather than
+    a list, because that is what the browser posts and what the server has to
+    make sense of.
+    """
+    response = client.post("/batches", data={"youtube_urls": "\n".join(urls)})
+    assert response.status_code == 202, response.text
+    found = _BATCH_EVENTS_URL.search(response.text)
+    assert found is not None, response.text
+    return found.group(1)
+
+
+def run_batch(
+    client: TestClient, urls: Sequence[str] = BATCH_URLS
+) -> list[Event]:
+    """Start a batch and wait for the whole queue to finish."""
+    return follow(client, start_batch(client, urls))
 
 
 def follow(client: TestClient, events_url: str) -> list[Event]:
@@ -132,8 +166,21 @@ def transcript_html(events: list[Event]) -> str:
     return one(events, "transcript").data["html"]
 
 
-def terminal(events: list[Event]) -> Event:
-    """The event that ended the run."""
-    assert events, "the run emitted nothing at all"
-    assert events[-1].name in {"done", "failed"}, outline(events)
+def terminal(
+    events: list[Event], names: Collection[str] = ("done", "failed")
+) -> Event:
+    """The event that ended the run, or the batch if its names are given.
+
+    Exactly one of them, and last: a stream with a terminal event in the
+    middle of it would be one the browser stopped reading early.
+    """
+    assert events, "the stream emitted nothing at all"
+    ending = [event for event in events if event.name in names]
+    assert len(ending) == 1, outline(events)
+    assert ending[0] is events[-1], outline(events)
     return events[-1]
+
+
+def batch_terminal(events: list[Event]) -> Event:
+    """The event that ended a batch, whichever of its two it was."""
+    return terminal(events, BATCH_TERMINAL)

@@ -1,0 +1,51 @@
+{# One episode of a batch, as the reader watches it go past.
+
+   Rendered twice over: once into the queue panel the submission hands back,
+   and again by every event that changes it, so the row a batch pushes down
+   its stream and the row the page opened with are the same markup. The
+   browser finds this one by `data-batch-row` and replaces it whole — which is
+   why the hook is on the element itself rather than on something inside it.
+
+   The URL is shown under the title only once there is a title: until then it
+   *is* the title, and a row that says the same thing twice is a row the
+   reader has to read twice.
+
+   The state's colours are written out below rather than beside its label in
+   `services/batches.py`, because Tailwind only scans `templates/**/*.html`
+   (see `assets/tailwind.css`): a class name held in Python is a class name
+   the stylesheet would not contain. #}
+{% import "macros.html" as macros %}
+<li
+  data-batch-row="{{ episode.position }}"
+  class="px-5 py-4 {% if episode.state == 'running' %}bg-accent/5{% endif %}"
+>
+  <div class="flex items-baseline justify-between gap-4">
+    <span class="min-w-0">
+      {% if episode.href %}
+        <a
+          href="{{ episode.href }}"
+          class="block truncate text-sm text-accent hover:text-accent-bright"
+        >{{ episode.label }}</a>
+      {% else %}
+        <span class="block truncate text-sm text-ink">{{ episode.label }}</span>
+      {% endif %}
+      {% if episode.title %}
+        <span class="mt-1 block truncate text-xs text-muted">{{ episode.url }}</span>
+      {% endif %}
+    </span>
+    <span
+      class="heading shrink-0 rounded px-2 py-1 text-[0.65rem]
+        {% if episode.state == 'done' %}bg-accent/15 text-accent
+        {% elif episode.state == 'failed' %}bg-red-500/15 text-red-300
+        {% elif episode.state == 'running' %}text-accent
+        {% else %}text-muted/70{% endif %}"
+    >{{ episode.state_label }}</span>
+  </div>
+
+  {# The same words a single run would have been stopped with, and the same
+     disclosure over the error underneath them. #}
+  {% if episode.failure %}
+    <p class="mt-2 text-sm text-ink/90">{{ episode.failure.message }}</p>
+    {{ macros.raw_error(episode.failure.detail) }}
+  {% endif %}
+</li>

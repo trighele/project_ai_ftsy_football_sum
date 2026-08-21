@@ -9,7 +9,7 @@ both from configuration.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from project_ai_ftsy_football_sum.config import claude_model, database_path
 from project_ai_ftsy_football_sum.container import EDGES, Container, get_container
+from project_ai_ftsy_football_sum.services import batches
 from project_ai_ftsy_football_sum.services.download import (
     download_filename,
     markdown_document,
@@ -33,7 +34,9 @@ from project_ai_ftsy_football_sum.services.players import (
 )
 from project_ai_ftsy_football_sum.services.runs import (
     Event,
+    LiveRun,
     LiveRuns,
+    Publish,
     lost_event,
     perform,
 )
@@ -104,6 +107,50 @@ def _player_reference(request: Request, *, sync: bool) -> dict[str, object]:
     }
 
 
+def _in_background(
+    live: LiveRun, work: Callable[[Publish], None], *, lost: Callable[[], Event]
+) -> None:
+    """Do blocking work on a worker thread, with its events reaching the loop.
+
+    The same arrangement for a run and for a batch, because it is the same
+    arrangement: the request returns at once, the work happens on a thread
+    since every edge it touches is a blocking library, and whatever it
+    publishes is handed back across to the loop its followers are on.
+
+    `lost` is the terminal event for work that ended without reporting
+    anything. It is published unconditionally when the task finishes, which is
+    safe because publishing to a stream that has already ended does nothing —
+    so it only lands when the work really did die.
+    """
+    loop = asyncio.get_running_loop()
+
+    def publish(event: Event) -> None:
+        """Hand an event from the worker thread back to the event loop."""
+        try:
+            loop.call_soon_threadsafe(live.publish, event)
+        except RuntimeError:
+            pass  # The loop is closing: nobody is left to tell.
+
+    live.task = asyncio.create_task(asyncio.to_thread(work, publish))
+    live.task.add_done_callback(lambda _task: live.publish(lost()))
+
+
+def _event_stream(live: LiveRun | None, *, missing: str) -> StreamingResponse:
+    """Follow work: everything it has emitted, then everything it emits.
+
+    The response ends when the work does. A client that reconnects gets the
+    whole of it again from the beginning, which is cheap and is why the events
+    are buffered.
+    """
+    if live is None:
+        raise HTTPException(status_code=404, detail=missing)
+    return StreamingResponse(
+        live.frames(),
+        media_type="text/event-stream",
+        headers={"cache-control": "no-cache", "x-accel-buffering": "no"},
+    )
+
+
 def _saved_run(request: Request, run_id: int) -> Run:
     """The run with that identifier, or a 404 for the reader who asked."""
     run = get_store(request).get(run_id)
@@ -144,6 +191,9 @@ def create_app(
     # not lose, which is the whole reason the data directory is a directory.
     app.state.players = PlayerCache(app.state.store.path)
     app.state.runs = LiveRuns()
+    # The same registry type under the batch's own terminal event names, so a
+    # batch is started, followed, and aged out exactly as a run is.
+    app.state.batches = LiveRuns(terminal=batches.TERMINAL_EVENTS)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -258,32 +308,22 @@ def create_app(
         note = context_note_from(context_note)
         container = get_container(request)
         store = get_store(request)
-        loop = asyncio.get_running_loop()
+        players = get_players(request)
+        model = claude_model()
 
-        def publish(event: Event) -> None:
-            """Hand an event from the worker thread back to the event loop."""
-            try:
-                loop.call_soon_threadsafe(live.publish, event)
-            except RuntimeError:
-                pass  # The loop is closing: nobody is left to tell.
-
-        live.task = asyncio.create_task(
-            asyncio.to_thread(
-                perform,
+        _in_background(
+            live,
+            lambda publish: perform(
                 url=youtube_url,
                 container=container,
                 store=store,
-                players=get_players(request),
-                model=claude_model(),
+                players=players,
+                model=model,
                 publish=publish,
                 context_note=note,
-            )
+            ),
+            lost=lost_event,
         )
-        # A run that died without reporting anything would leave its stream
-        # open for as long as the browser is prepared to wait. `publish` is a
-        # no-op once the run has already ended, so this only fires when it has
-        # not.
-        live.task.add_done_callback(lambda _task: live.publish(lost_event()))
         return templates.TemplateResponse(
             request,
             "fragments/run.html",
@@ -293,20 +333,53 @@ def create_app(
 
     @app.get("/runs/{token}/events")
     def run_events(request: Request, token: str) -> StreamingResponse:
-        """Follow a run: everything it has emitted, then everything it emits.
+        """Follow a run to its one terminal event."""
+        return _event_stream(
+            request.app.state.runs.get(token), missing="No such run."
+        )
 
-        The response ends when the run does. A client that reconnects gets the
-        whole run again from the beginning, which is cheap and is why the
-        events are buffered.
+    @app.post("/batches", response_class=HTMLResponse)
+    async def start_batch(
+        request: Request, youtube_urls: str = Form(default="")
+    ) -> HTMLResponse:
+        """Start a batch and return at once with the queue that follows it.
+
+        The queue is the receipt for what was pasted, so it is rendered whole
+        before any work starts and every row of it is on the page from the
+        moment it arrives. What happens to each row after that arrives on the
+        event stream it names.
         """
-        live = request.app.state.runs.get(token)
-        if live is None:
-            raise HTTPException(status_code=404, detail="No such run.")
+        live = request.app.state.batches.start()
+        batch = batches.batch_from(youtube_urls)
+        container = get_container(request)
+        store = get_store(request)
+        players = get_players(request)
+        model = claude_model()
 
-        return StreamingResponse(
-            live.frames(),
-            media_type="text/event-stream",
-            headers={"cache-control": "no-cache", "x-accel-buffering": "no"},
+        _in_background(
+            live,
+            lambda publish: batches.perform_batch(
+                batch=batch,
+                container=container,
+                store=store,
+                players=players,
+                model=model,
+                publish=publish,
+            ),
+            lost=batches.lost_event,
+        )
+        return templates.TemplateResponse(
+            request,
+            "fragments/batch.html",
+            {"token": live.token, "batch": batch},
+            status_code=202,
+        )
+
+    @app.get("/batches/{token}/events")
+    def batch_events(request: Request, token: str) -> StreamingResponse:
+        """Follow a batch to its one terminal event."""
+        return _event_stream(
+            request.app.state.batches.get(token), missing="No such batch."
         )
 
     @app.get("/fragments/status", response_class=HTMLResponse)
