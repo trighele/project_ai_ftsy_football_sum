@@ -1,24 +1,58 @@
 {
-    "name": "local-ff_summary",
-    "dockerComposeFile": "./docker-compose.local.yml",
-    "service": "local-dev",
-    "workspaceFolder": "/home/build/app",
-    "mounts": ["source=${localEnv:USERPROFILE}\\.claude,target=/root/.claude,type=bind"],
+    // Nothing in this file is host-specific. Everything that varies between
+    // machines is resolved on the host by bootstrap.mjs and reaches the
+    // container through docker-compose.local.yml's .env.
+    "name": "ffsum",
+    "dockerComposeFile": "docker-compose.local.yml",
+    "service": "dev",
+    "workspaceFolder": "/workspaces/project_ai_ftsy_football_sum",
+
+    // ARRAY form, deliberately. The string form is re-quoted when the
+    // extension spawns a host shell, and the quotes end up inside argv as a
+    // doubled path: "Cannot find module 'd:\repo\"d:\repo\.devcontainer\...'".
+    "initializeCommand": ["node", "${localWorkspaceFolder}/.devcontainer/bootstrap.mjs"],
+
+    // Node is here for the Claude Code CLI, not for the project - nothing in
+    // the app is JavaScript. github-cli is the fallback credential path when
+    // the extension's own forwarding is not available.
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "lts"
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+
+    "remoteUser": "vscode",
+    // On a Linux or macOS host this remaps vscode to the host's uid so
+    // bind-mounted files stay writable. A no-op on Windows, which has no
+    // host uid to match.
+    "updateRemoteUserUID": true,
+
+    "forwardPorts": [8000],
+    "portsAttributes": {
+        "8000": {
+            "label": "ffsum",
+            "onAutoForward": "notify"
+        }
+    },
+
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+
     "customizations": {
         "vscode": {
+            // Must live under customizations.vscode - a top-level "extensions"
+            // key is silently ignored and nothing warns.
             "extensions": [
                 "anthropic.claude-code",
                 "ms-python.python",
                 "ms-python.vscode-python-envs",
                 "ms-python.vscode-pylance"
-            ]
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+                "python.testing.pytestEnabled": true,
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
         }
-    },
-    "forwardPorts": [8000],
-    "remoteUser": "root",
-    "remoteEnv": {
-        "UV_LINK_MODE": "copy",
-        "IS_SANDBOX": "1"
-    },
-    "postCreateCommand": "bash .devcontainer/setup.sh"
+    }
 }

@@ -1,0 +1,15 @@
+# Line endings are a property of the repo, not of each machine's core.autocrlf.
+# The working tree on a Windows host may still be CRLF; what matters is that
+# everything committed is LF, so the same checkout is usable from a Linux
+# container without `bad interpreter: /bin/bash^M`.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.woff2 binary
