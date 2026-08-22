@@ -102,3 +102,9 @@ notebooks/*.csv
 
 # Application data (SQLite database - see FFSUM_DATA_DIR in config.py)
 data/
+
+# Generated devcontainer machine config and placeholders (see .devcontainer/bootstrap.mjs)
+.devcontainer/.local/
+# ...but the template IS committed: bootstrap.mjs seeds a fresh .env from it,
+# and the blanket .env.* rule above would otherwise swallow it.
+!.devcontainer/.env.example

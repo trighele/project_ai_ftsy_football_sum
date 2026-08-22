@@ -1,9 +1,67 @@
-version: '3.8'
+# Machine-specific values come from the gitignored .env that bootstrap.mjs
+# writes; nothing host-specific is committed here. Every interpolation that
+# would silently mount the wrong thing uses ${VAR:?message} so a missing .env
+# fails loudly instead of mounting an empty directory.
 services:
-    local-dev:
-        image: python:3.14-slim-bookworm
+    dev:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        platform: ${DOCKER_PLATFORM:-linux/amd64}
+
         volumes:
-            - ..:/home/build/app:cached
+            # The host's own checkout, bind-mounted. Same .git, same history,
+            # same uncommitted work.
+            - ..:/workspaces/project_ai_ftsy_football_sum:cached
+
+            # The whole of ~/.claude - skills, settings, auth - read-write, so
+            # session state lands back on the host. bootstrap.mjs points this
+            # at a placeholder when the host has no ~/.claude.
+            - ${HOST_CLAUDE_DIR:?run "node .devcontainer/bootstrap.mjs" first}:/home/vscode/.claude
+
+            # git's global ignore file, read-only. Without it the container
+            # reports untracked files the host does not - a `git status`
+            # parity failure with nothing to do with the container.
+            - ${HOST_GIT_EXCLUDES:?run "node .devcontainer/bootstrap.mjs" first}:/home/vscode/.gitignore-global:ro
+
+            # Named volumes, never mounted at the workspace root: a volume over
+            # the root would shadow .git. .venv especially must not be shared
+            # with the host - whatever the host last built there is for the
+            # host's platform and interpreter path, not this container's.
+            - venv:/workspaces/project_ai_ftsy_football_sum/.venv
+            - uv-cache:/home/vscode/.cache/uv
+
+            # Saved runs and the cached player reference. A volume rather than
+            # the repo's ./data for two reasons: the Windows bind mount arrives
+            # root-owned so uid 1000 cannot write it, and SQLite in WAL mode
+            # over a 9p/virtiofs mount is a file-locking hazard even when it
+            # can. This is also what production does - the image mounts a
+            # volume at /data.
+            - ffsum-data:/data
+
         environment:
-            - GIT_SAFE_DIRECTORY=*
+            # Separate volumes for the cache and .venv means uv cannot hardlink
+            # between them; copying is the supported answer, not a warning.
+            UV_LINK_MODE: copy
+            FFSUM_DATA_DIR: /data
+            IS_SANDBOX: "1"
+            GIT_USER_NAME: ${GIT_USER_NAME:-}
+            GIT_USER_EMAIL: ${GIT_USER_EMAIL:-}
+            HOST_HAS_CLAUDE: ${HOST_HAS_CLAUDE:-0}
+
+        env_file:
+            # The machine config.
+            - path: .env
+              required: false
+            # The repo's own .env, if there is one, so ANTHROPIC_API_KEY is
+            # already in the environment - the same thing Compose does for the
+            # production image. The app still never loads .env itself.
+            - path: ../.env
+              required: false
+
         command: sleep infinity
+
+volumes:
+    venv:
+    uv-cache:
+    ffsum-data:

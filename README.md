@@ -57,6 +57,30 @@ It listens on `http://127.0.0.1:8000` by default; `--host`, `--port`, and the `H
 uv run pytest
 ```
 
+### Dev container
+
+"Dev Containers: Reopen in Container" in VS Code builds an Ubuntu container with
+Python 3.14, uv, and Claude Code already in it, and runs `uv sync` on create. The
+same config is used on every machine: `.devcontainer/bootstrap.mjs` runs on the
+host first and writes the machine-specific values (home directory, architecture,
+git identity) into a gitignored `.devcontainer/.env` that the compose file reads.
+
+**The host needs Node** for that bootstrap. Without it the container fails to
+start with an error about `node` not being found, which does not otherwise
+explain itself.
+
+Your `~/.claude` is bind-mounted in, so global skills, settings, and login come
+along and there is no second sign-in. The repo-root `.env` is loaded if present,
+so `ANTHROPIC_API_KEY` is already in the environment.
+
+Three things deliberately do *not* use the bind-mounted working tree, and live in
+named volumes instead: `.venv` (the host's belongs to the host, not to this
+container -- and this checkout still holds a stale Linux one left by the old
+dev container, which is exactly the mess a volume prevents),
+the uv cache, and `/data` (`FFSUM_DATA_DIR` is set to it, because SQLite in WAL
+mode cannot write to a Windows bind mount). Saved runs inside the container are
+therefore separate from the ones in the repo's `./data`.
+
 ### Using Docker
 
 ```bash

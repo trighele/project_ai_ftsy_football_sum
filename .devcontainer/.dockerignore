@@ -1,0 +1,4 @@
+# Keep the generated machine config and any placeholder out of the build
+# context - the daemon has no business receiving them.
+.env
+.local/
